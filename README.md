@@ -1,5 +1,15 @@
 # Cornetto Critico - Sito web
 
+Quando parliamo di materia, non nominiamo soltanto ciò di cui le cose sono fatte. Nella sua radice si conserva un’idea di costruzione e di composizione che apre la parola ben oltre la sostanza, facendone un punto di accesso alle diverse dimensioni della ricerca e del progetto. È nella materia, infatti, che una pratica prende forma, che un sapere si traduce, che un’idea entra in relazione con il mondo.
+È da questa soglia che prende avvio Cornetto Critico, come riflessione interdisciplinare sulla materia intesa come interfaccia sensibile attraverso la quale la vita si manifesta secondo un processo continuo di azione e reazione. Una trama complessa di legami chimici, culturali, ecologici e tecnologici attraversa così l’intera rassegna, disponendosi in una costellazione di campi di relazione che ne orientano la lettura: individuo–spazio pubblico, superficie–profondità, pratica–sapere, specie–ecosistema, vivente–risorsa, dispositivo–infrastruttura, percezione–automazione. 
+In questo quadro, il dialogo collettivo si propone di interrogare non soltanto le relazioni tra soggetti, ma anche quelle che intratteniamo con gli elementi che manipoliamo, abitiamo e trasformiamo quotidianamente. Dalla scala più minuta a quella più ampia, queste relazioni caratterizzano le forme del vivere contemporaneo e incidono sul nostro modo di percepire, progettare e immaginare il mondo.
+La rassegna si articola in sette incontri, intesi come sette declinazioni della materia, ciascuna attraversata da uno specifico asse di lettura: urbana, profonda, antica, di specie, alimentare, digitale, aerea. L’obiettivo è aprire uno spazio di confronto sperimentale, capace di generare domande, intrecciare saperi e oltrepassare i confini disciplinari. Un luogo di dialogo aperto tra conoscenze e pratiche eterogenee, pensato per stimolare consapevolezza, immaginazione e responsabilità progettuale. Non per offrire soluzioni definitive, ma per costruire insieme nuovi scenari di riflessione condivisa.
+
+Website design [@Alice Mioni](https://alicemioni.ch/) & [@Alessandro Plantera](https://alessandroplantera.ch/)
+Website implementation [@Alice Mioni](https://alicemioni.ch/) [@Alessandro Plantera](https://alessandroplantera.ch/) & [@Matteo Subet](https://zumat.ch/)
+
+## Informazioni
+
 Sito statico che mostra informazioni sul Cornetto Critico e le iscrizioni per evento.
 
 Il conteggio viene aggiornato da GitHub Actions usando le repository secrets `SUPABASE_URL` e `SUPABASE_KEY`, che generano il file `count.json` con il totale e il dettaglio per evento.
