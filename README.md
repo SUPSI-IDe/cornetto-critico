@@ -6,6 +6,7 @@ In questo quadro, il dialogo collettivo si propone di interrogare non soltanto l
 La rassegna si articola in sette incontri, intesi come sette declinazioni della materia, ciascuna attraversata da uno specifico asse di lettura: urbana, profonda, antica, di specie, alimentare, digitale, aerea. L’obiettivo è aprire uno spazio di confronto sperimentale, capace di generare domande, intrecciare saperi e oltrepassare i confini disciplinari. Un luogo di dialogo aperto tra conoscenze e pratiche eterogenee, pensato per stimolare consapevolezza, immaginazione e responsabilità progettuale. Non per offrire soluzioni definitive, ma per costruire insieme nuovi scenari di riflessione condivisa.
 
 Website design [@Alice Mioni](https://alicemioni.ch/) & [@Alessandro Plantera](https://alessandroplantera.ch/)
+
 Website implementation [@Alice Mioni](https://alicemioni.ch/) [@Alessandro Plantera](https://alessandroplantera.ch/) & [@Matteo Subet](https://zumat.ch/)
 
 ## Informazioni
