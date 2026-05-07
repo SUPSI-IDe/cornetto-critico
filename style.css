@@ -10,6 +10,7 @@
 
 :root {
     --fontSize: 24px;
+    --fontSizeSmall: 20px;
     --symbolSize: 32px;
 }
 
@@ -158,9 +159,12 @@ header img {
 }
 
 @media (max-width: 768px) {
+    header img {
+        width: 80%;
+    }
     .info-wrapper{
-        margin-left: 0;
-        margin-right: 0;
+        margin-left: 5px;
+        margin-right: 5px;
     }
 
     .decoration::before {
@@ -173,6 +177,20 @@ header img {
 }
 
 @media (max-width: 430px) {
+    body {
+        font-size: var(--fontSizeSmall);
+        line-height: 1.2;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    p {
+        font-size: var(--fontSizeSmall);
+    }
+
     .decoration::before {
         content: "*****************";
     }
