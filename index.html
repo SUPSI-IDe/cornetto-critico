@@ -264,7 +264,7 @@
 
     async function loadCounts() {
       try {
-        const response = await fetch(`./count.json?t=${Date.now()}`, { cache: "no-store" });
+        const response = await fetch(`https://raw.githubusercontent.com/SUPSI-IDe/cornetto-critico/main/count.json?t=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`Errore HTTP ${response.status}`);
         const data = await response.json();
 
