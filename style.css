@@ -48,6 +48,7 @@ h5{
 
 a{
     text-decoration: none;
+    text-transform: uppercase;
 }
 
 a:hover {
@@ -143,6 +144,7 @@ header img {
     width: 30%;
     margin-left: auto;
     margin-right: auto;
+    text-transform: uppercase;
 }
 
 .fulltext{
