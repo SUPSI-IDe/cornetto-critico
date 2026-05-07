@@ -1,0 +1,49 @@
+name: Update Count
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-count:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read registrations count from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_KEY"
+
+          RESPONSE=$(curl -sS \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/registrations?select=event_name")
+
+          echo "$RESPONSE" | jq --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" '{
+            total: length,
+            updated_at: $ts,
+            events: (group_by(.event_name) | map({key: (.[] | .event_name), value: length}) | from_entries)
+          }' > count.json
+
+      - name: Commit updated count
+        run: |
+          if git diff --quiet -- count.json; then
+            echo "Nessuna modifica a count.json"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add count.json
+          git commit -m "Update registrations count"
+          git push

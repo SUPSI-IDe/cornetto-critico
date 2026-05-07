@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+.runtime-secrets.json
+node_modules/
+env.js
+fetch-count.sh
