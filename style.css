@@ -42,9 +42,11 @@ h4::after{
     content: "\25AE";
 }
 
-h5{
+h5, .financial, .financial:visited{
     color: white;
     background-color: black;
+    line-height: 1;
+    height: fit-content;
 }
 
 a{

@@ -5,3 +5,8 @@
 node_modules/
 env.js
 fetch-count.sh
+.DS_Store
+
+
+iscrizioni/
+.github/workflows/register.yml
