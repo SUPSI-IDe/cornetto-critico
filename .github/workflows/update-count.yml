@@ -3,7 +3,7 @@ name: Update Count
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0,30 7-17 * * 1-5"
+    - cron: "17,47 6-15 * * 1-5"
 
 permissions:
   contents: write
