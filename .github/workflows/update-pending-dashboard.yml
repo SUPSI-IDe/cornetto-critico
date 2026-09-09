@@ -3,7 +3,7 @@ name: Update Pending Dashboard
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 7-17 * * 1-5"
+    - cron: "*/5 6-15 * * 1-5"
 
 permissions:
   contents: write
