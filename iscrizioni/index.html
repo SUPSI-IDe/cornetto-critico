@@ -110,22 +110,14 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            ref: 'main',
             event_type: 'register-attendee',
-            client_payload: registrationPayload,
-            inputs: {
-              event_slug: EVENT.slug,
-              event_name: EVENT.name,
-              attendee_name,
-              attendee_email,
-              speaker_names: JSON.stringify(EVENT.speakers),
-              print_status: 'pending'
-            }
+            client_payload: registrationPayload
           })
         });
 
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          const errorBody = await res.text();
+          throw new Error(`HTTP ${res.status} ${errorBody}`);
         }
 
         formEl.reset();
