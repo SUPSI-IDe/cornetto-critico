@@ -1,0 +1,87 @@
+name: Register Attendee
+
+on:
+  repository_dispatch:
+    types: [register-attendee]
+  workflow_dispatch:
+    inputs:
+      event_slug:
+        description: Event slug
+        required: true
+        type: string
+      event_name:
+        description: Event name
+        required: true
+        type: string
+      attendee_name:
+        description: Attendee name
+        required: true
+        type: string
+      attendee_email:
+        description: Attendee email
+        required: true
+        type: string
+      speaker_names:
+        description: Speaker names as JSON array string
+        required: true
+        type: string
+      print_status:
+        description: Print status
+        required: true
+        default: pending
+        type: string
+
+jobs:
+  insert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build registration payload
+        id: payload
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            {
+              echo 'json<<EOF'
+              echo '${{ toJson(github.event.client_payload) }}'
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            SPEAKER_NAMES='${{ github.event.inputs.speaker_names }}'
+
+            if ! echo "$SPEAKER_NAMES" | jq -e 'type == "array"' >/dev/null 2>&1; then
+              echo "speaker_names must be a JSON array string"
+              exit 1
+            fi
+
+            PAYLOAD_JSON=$(jq -cn \
+              --arg event_slug '${{ github.event.inputs.event_slug }}' \
+              --arg event_name '${{ github.event.inputs.event_name }}' \
+              --arg attendee_name '${{ github.event.inputs.attendee_name }}' \
+              --arg attendee_email '${{ github.event.inputs.attendee_email }}' \
+              --arg print_status '${{ github.event.inputs.print_status }}' \
+              --argjson speaker_names "$SPEAKER_NAMES" \
+              '{
+                event_slug: $event_slug,
+                event_name: $event_name,
+                attendee_name: $attendee_name,
+                attendee_email: $attendee_email,
+                speaker_names: $speaker_names,
+                print_status: $print_status
+              }')
+
+            echo "json=$PAYLOAD_JSON" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Insert registration into Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          PAYLOAD='${{ steps.payload.outputs.json }}'
+          curl --fail -sS \
+            -X POST \
+            "${SUPABASE_URL}/rest/v1/registrations" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "${PAYLOAD}"

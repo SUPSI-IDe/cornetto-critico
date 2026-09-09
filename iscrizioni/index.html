@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="iscrizioni/style.css" />
+  <script src="env.js"></script>
+  <title>Registrazione evento</title>
+</head>
+
+<body>
+  <header class="header">
+    <img src="../img/title.png" alt="Materia Urbana" width="120" />
+    <p>ISCRIVITI ALL'EVENTO</p>
+  </header>
+  <div class="video-wrapper">
+    <video src="../img/video.mov" alt="" autoplay muted loop></video>
+  </div>
+  <div class="info-wrapper">
+    <div class="decoration" aria-hidden="true"></div>
+    <div class="event-meta">
+      <h1 id="event-name"></h1>
+      <h1 class="event-date">28.04.2026</h1>
+    </div>
+
+    <h2 class="organizzatori-title">ORGANIZZATORI</h2>
+    <ul id="speaker-list" class="speakers"></ul>
+    <div class="decoration" aria-hidden="true"></div>
+  </div>
+  <form id="registration-form">
+    <label>
+      Nome
+      <input type="text" id="name" name="name" required class="input-name" />
+    </label>
+
+    <label>
+      Email
+      <input type="email" id="email" name="email" required />
+    </label>
+
+    <button type="submit" id="submit-btn">Conferma iscrizione</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    const EVENT = {
+      slug: 'evento-demo',
+      name: 'MATERIA URBANA',
+      speakers: ['PIERFILIPPO BALDO', 'MARCO RIZZI']
+    };
+
+    const PUBLIC_ACTION_TRIGGER_URL = window.APP_CONFIG?.PUBLIC_ACTION_TRIGGER_URL || '';
+
+    const eventNameEl  = document.getElementById('event-name');
+    const speakerListEl = document.getElementById('speaker-list');
+    const formEl       = document.getElementById('registration-form');
+    const statusEl     = document.getElementById('status');
+    const submitBtnEl  = document.getElementById('submit-btn');
+    let successMessageTimeoutId = null;
+
+    eventNameEl.textContent = EVENT.name;
+
+    EVENT.speakers.forEach(function(speaker) {
+      const li = document.createElement('li');
+      const mark = document.createElement('mark');
+      mark.textContent = speaker;
+      li.appendChild(mark);
+      speakerListEl.appendChild(li);
+    });
+
+    formEl.addEventListener('submit', async function(event) {
+      event.preventDefault();
+
+      if (successMessageTimeoutId) {
+        clearTimeout(successMessageTimeoutId);
+        successMessageTimeoutId = null;
+      }
+
+      const attendee_name  = document.getElementById('name').value.trim().toUpperCase();
+      const attendee_email = document.getElementById('email').value.trim();
+
+      if (!attendee_name || !attendee_email) {
+        statusEl.textContent = 'Compila tutti i campi.';
+        return;
+      }
+
+      if (!PUBLIC_ACTION_TRIGGER_URL) {
+        statusEl.textContent = 'Configurazione mancante.';
+        return;
+      }
+
+      submitBtnEl.disabled = true;
+      statusEl.textContent = 'Invio in corso...';
+
+      try {
+        const registrationPayload = {
+          event_slug: EVENT.slug,
+          event_name: EVENT.name,
+          attendee_name,
+          attendee_email,
+          speaker_names: EVENT.speakers,
+          print_status: 'pending'
+        };
+
+        const res = await fetch(PUBLIC_ACTION_TRIGGER_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ref: 'main',
+            event_type: 'register-attendee',
+            client_payload: registrationPayload,
+            inputs: {
+              event_slug: EVENT.slug,
+              event_name: EVENT.name,
+              attendee_name,
+              attendee_email,
+              speaker_names: JSON.stringify(EVENT.speakers),
+              print_status: 'pending'
+            }
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        formEl.reset();
+        statusEl.textContent = 'Iscrizione confermata.';
+
+        successMessageTimeoutId = setTimeout(function() {
+          statusEl.textContent = '';
+          successMessageTimeoutId = null;
+        }, 30000);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Errore durante la registrazione.';
+      } finally {
+        submitBtnEl.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>
