@@ -1,0 +1,53 @@
+name: Update Pending Dashboard
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-pending-dashboard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read pending registrations from Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_KEY"
+
+          RESPONSE=$(curl -sS \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/registrations?select=id,created_at,event_name,print_status&print_status=eq.pending&order=created_at.asc")
+
+          echo "$RESPONSE" | jq --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" '{
+            updated_at: $ts,
+            pending: (map({
+              id,
+              created_at,
+              event_name,
+              print_status
+            }))
+          }' > check-printer/pending.json
+
+      - name: Commit pending snapshot
+        run: |
+          if git diff --quiet -- check-printer/pending.json; then
+            echo "Nessuna modifica a check-printer/pending.json"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add check-printer/pending.json
+          git commit -m "Update pending dashboard snapshot"
+          git push

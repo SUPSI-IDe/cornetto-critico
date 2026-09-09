@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pending Monitor</title>
+  <style>
+    @font-face {
+      font-family: NeueMontreal;
+      src: url("../fonts/OTNeueMontreal-MediumSqueezed.otf");
+    }
+
+    body {
+      margin: 0;
+      font-family: NeueMontreal, sans-serif;
+      background: #f5f5f0;
+      color: #111;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: 28px;
+      text-transform: uppercase;
+    }
+
+    .box {
+      border: 1px solid #111;
+      background: #fff;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .kpi {
+      font-size: 26px;
+      line-height: 1;
+      margin-top: 4px;
+    }
+
+    .muted {
+      color: #555;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .alert {
+      color: #b10000;
+    }
+
+    button {
+      border: 1px solid #111;
+      background: #111;
+      color: #fff;
+      padding: 10px 12px;
+      font: inherit;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    li {
+      border-top: 1px solid #ddd;
+      padding: 10px 0;
+    }
+
+    li:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    @media (max-width: 560px) {
+      .kpi {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Pending Print Monitor</h1>
+
+    <section class="box">
+      <div class="row">
+        <div>
+          <div class="muted">Pending Totali</div>
+          <div class="kpi" id="pending-total">0</div>
+        </div>
+        <div>
+          <div class="muted">Oltre 5 Min</div>
+          <div class="kpi" id="pending-stale">0</div>
+        </div>
+        <div>
+          <div class="muted">Prossimo Controllo GitHub</div>
+          <div class="kpi" id="next-github-check">--:--</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="box row">
+      <div>
+        <div class="muted">Stato</div>
+        <div id="status-label">Inizializzazione</div>
+      </div>
+      <button id="enable-notifications" type="button">Abilita Notifiche</button>
+    </section>
+
+    <section class="box">
+      <div class="muted" style="margin-bottom: 8px;">Coda Pending</div>
+      <ul id="queue-list">
+        <li>Nessuna registrazione pending.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+    const CONFIG = {
+      pendingJsonPath: './pending.json',
+      staleAfterMs: 5 * 60 * 1000,
+      dashboardPollMs: 30000,
+      githubActionIntervalMs: 5 * 60 * 1000
+    };
+
+    const state = {
+      notifiedIds: new Set(),
+      nextGithubCheckAt: null
+    };
+
+    const pendingTotalEl = document.getElementById('pending-total');
+    const pendingStaleEl = document.getElementById('pending-stale');
+    const nextGithubCheckEl = document.getElementById('next-github-check');
+    const statusLabelEl = document.getElementById('status-label');
+    const queueListEl = document.getElementById('queue-list');
+    const enableNotificationsButtonEl = document.getElementById('enable-notifications');
+
+    function formatAge(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    }
+
+    function setStatus(text, isAlert) {
+      statusLabelEl.textContent = text;
+      statusLabelEl.classList.toggle('alert', Boolean(isAlert));
+    }
+
+    function computeNextGithubCheck(baseDate) {
+      const baseMs = baseDate.getTime();
+      const interval = CONFIG.githubActionIntervalMs;
+      const nextMs = Math.floor(baseMs / interval) * interval + interval;
+      return new Date(nextMs);
+    }
+
+    function renderNextGithubCountdown() {
+      if (!state.nextGithubCheckAt) {
+        nextGithubCheckEl.textContent = '--:--';
+        return;
+      }
+
+      const remaining = state.nextGithubCheckAt.getTime() - Date.now();
+      if (remaining <= 0) {
+        nextGithubCheckEl.textContent = '00:00';
+        return;
+      }
+
+      const totalSeconds = Math.floor(remaining / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      nextGithubCheckEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    async function fetchSnapshot() {
+      const response = await fetch(`${CONFIG.pendingJsonPath}?t=${Date.now()}`, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Snapshot ${response.status}`);
+      }
+
+      const payload = await response.json();
+      if (!payload || !Array.isArray(payload.pending)) {
+        throw new Error('Formato pending.json non valido');
+      }
+
+      return payload;
+    }
+
+    function normalizeRows(rows) {
+      const now = Date.now();
+      return rows.map(function(row) {
+        const createdAt = new Date(row.created_at);
+        const ageMs = now - createdAt.getTime();
+        return {
+          id: row.id,
+          eventName: row.event_name || 'Evento sconosciuto',
+          ageMs,
+          isStale: ageMs >= CONFIG.staleAfterMs
+        };
+      });
+    }
+
+    function renderQueue(items) {
+      if (!items.length) {
+        queueListEl.innerHTML = '<li>Nessuna registrazione pending.</li>';
+        return;
+      }
+
+      queueListEl.innerHTML = items.map(function(item) {
+        const stale = item.isStale ? ' - OLTRE 5 MIN' : '';
+        return `<li><strong>#${item.id}</strong> ${item.eventName}<br><span class="muted">In coda da ${formatAge(item.ageMs)}${stale}</span></li>`;
+      }).join('');
+    }
+
+    function notifyStale(items) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') {
+        return;
+      }
+
+      items.forEach(function(item) {
+        if (!item.isStale || state.notifiedIds.has(item.id)) {
+          return;
+        }
+
+        new Notification('Pending oltre 5 minuti', {
+          body: `Registrazione #${item.id} (${item.eventName}) in coda da ${formatAge(item.ageMs)}.`,
+          tag: `pending-${item.id}`,
+          requireInteraction: true
+        });
+
+        state.notifiedIds.add(item.id);
+      });
+
+      const ids = new Set(items.map(function(item) { return item.id; }));
+      Array.from(state.notifiedIds).forEach(function(id) {
+        if (!ids.has(id)) {
+          state.notifiedIds.delete(id);
+        }
+      });
+    }
+
+    async function refreshDashboard() {
+      try {
+        setStatus('Controllo in corso', false);
+        const snapshot = await fetchSnapshot();
+        const items = normalizeRows(snapshot.pending);
+        const staleCount = items.filter(function(item) { return item.isStale; }).length;
+
+        pendingTotalEl.textContent = String(items.length);
+        pendingStaleEl.textContent = String(staleCount);
+        renderQueue(items);
+        notifyStale(items);
+
+        const snapshotDate = snapshot.updated_at ? new Date(snapshot.updated_at) : new Date();
+        state.nextGithubCheckAt = computeNextGithubCheck(snapshotDate);
+        renderNextGithubCountdown();
+
+        if (staleCount > 0) {
+          setStatus(`${staleCount} pending oltre soglia`, true);
+        } else if (items.length > 0) {
+          setStatus('Coda presente sotto soglia', false);
+        } else {
+          setStatus('Nessun pending', false);
+        }
+      } catch (error) {
+        setStatus(`Errore: ${error.message}`, true);
+      }
+    }
+
+    enableNotificationsButtonEl.addEventListener('click', async function() {
+      if (!('Notification' in window)) {
+        setStatus('Notifiche non supportate da questo browser', true);
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        setStatus('Notifiche abilitate', false);
+      } else {
+        setStatus(`Permesso notifiche: ${permission}`, true);
+      }
+    });
+
+    refreshDashboard();
+    window.setInterval(refreshDashboard, CONFIG.dashboardPollMs);
+    window.setInterval(renderNextGithubCountdown, 1000);
+  </script>
+</body>
+
+</html>
