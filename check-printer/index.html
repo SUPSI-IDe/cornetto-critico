@@ -120,6 +120,7 @@
       <div>
         <div class="muted">Stato</div>
         <div id="status-label">Inizializzazione</div>
+        <div class="muted" id="snapshot-updated-at" style="margin-top: 6px;">Snapshot: --</div>
       </div>
       <button id="enable-notifications" type="button">Abilita Notifiche</button>
     </section>
@@ -134,9 +135,9 @@
 
   <script>
     const CONFIG = {
-      pendingJsonPath: './pending.json',
+      pendingJsonPaths: ['./pending.json', '/check-printer/pending.json'],
       staleAfterMs: 5 * 60 * 1000,
-      dashboardPollMs: 30000,
+      dashboardPollMs: 10000,
       githubActionIntervalMs: 5 * 60 * 1000
     };
 
@@ -149,6 +150,7 @@
     const pendingStaleEl = document.getElementById('pending-stale');
     const nextGithubCheckEl = document.getElementById('next-github-check');
     const statusLabelEl = document.getElementById('status-label');
+    const snapshotUpdatedAtEl = document.getElementById('snapshot-updated-at');
     const queueListEl = document.getElementById('queue-list');
     const enableNotificationsButtonEl = document.getElementById('enable-notifications');
 
@@ -162,6 +164,17 @@
     function setStatus(text, isAlert) {
       statusLabelEl.textContent = text;
       statusLabelEl.classList.toggle('alert', Boolean(isAlert));
+    }
+
+    function formatDateTime(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return 'data non valida';
+      }
+      return new Intl.DateTimeFormat('it-CH', {
+        dateStyle: 'short',
+        timeStyle: 'medium'
+      }).format(date);
     }
 
     function computeNextGithubCheck(baseDate) {
@@ -190,17 +203,36 @@
     }
 
     async function fetchSnapshot() {
-      const response = await fetch(`${CONFIG.pendingJsonPath}?t=${Date.now()}`, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Snapshot ${response.status}`);
+      let lastError = null;
+
+      for (const path of CONFIG.pendingJsonPaths) {
+        try {
+          const response = await fetch(`${path}?t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              Pragma: 'no-cache'
+            }
+          });
+
+          if (!response.ok) {
+            lastError = new Error(`Snapshot ${response.status} (${path})`);
+            continue;
+          }
+
+          const payload = await response.json();
+          if (!payload || !Array.isArray(payload.pending)) {
+            lastError = new Error(`Formato pending.json non valido (${path})`);
+            continue;
+          }
+
+          return payload;
+        } catch (error) {
+          lastError = error;
+        }
       }
 
-      const payload = await response.json();
-      if (!payload || !Array.isArray(payload.pending)) {
-        throw new Error('Formato pending.json non valido');
-      }
-
-      return payload;
+      throw lastError || new Error('Impossibile leggere pending.json');
     }
 
     function normalizeRows(rows) {
@@ -271,6 +303,7 @@
         const snapshotDate = snapshot.updated_at ? new Date(snapshot.updated_at) : new Date();
         state.nextGithubCheckAt = computeNextGithubCheck(snapshotDate);
         renderNextGithubCountdown();
+        snapshotUpdatedAtEl.textContent = `Snapshot: ${formatDateTime(snapshot.updated_at || snapshotDate)}`;
 
         if (staleCount > 0) {
           setStatus(`${staleCount} pending oltre soglia`, true);
@@ -281,6 +314,7 @@
         }
       } catch (error) {
         setStatus(`Errore: ${error.message}`, true);
+        snapshotUpdatedAtEl.textContent = 'Snapshot: errore caricamento';
       }
     }
 
@@ -301,6 +335,11 @@
     refreshDashboard();
     window.setInterval(refreshDashboard, CONFIG.dashboardPollMs);
     window.setInterval(renderNextGithubCountdown, 1000);
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        refreshDashboard();
+      }
+    });
   </script>
 </body>
 
