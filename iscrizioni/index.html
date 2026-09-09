@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="iscrizioni/style.css" />
-  <script src="env.js"></script>
   <title>Registrazione evento</title>
 </head>
 
@@ -48,11 +47,11 @@
   <script>
     const EVENT = {
       slug: 'evento-demo',
-      name: 'MATERIA URBANA',
-      speakers: ['PIERFILIPPO BALDO', 'MARCO RIZZI']
+      name: 'MATERIA PROVA',
+      speakers: ['MARIO ROSSI', 'REMO BERNASCONI']
     };
 
-    const PUBLIC_ACTION_TRIGGER_URL = window.APP_CONFIG?.PUBLIC_ACTION_TRIGGER_URL || '';
+    const PUBLIC_ACTION_TRIGGER_URL = 'https://publicactiontrigger.azurewebsites.net/api/dispatches/SUPSI-IDe/cornetto-critico';
 
     const eventNameEl  = document.getElementById('event-name');
     const speakerListEl = document.getElementById('speaker-list');
@@ -87,7 +86,7 @@
         return;
       }
 
-      if (!PUBLIC_ACTION_TRIGGER_URL) {
+      if (!PUBLIC_ACTION_TRIGGER_URL || PUBLIC_ACTION_TRIGGER_URL === 'PASTE_PUBLIC_ACTION_TRIGGER_URL_HERE') {
         statusEl.textContent = 'Configurazione mancante.';
         return;
       }

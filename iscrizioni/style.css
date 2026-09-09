@@ -1,11 +1,11 @@
 @font-face {
     font-family: PPMondwest;
-    src: url("fonts/PPMondwest-Regular.otf");
+    src: url("../fonts/PPMondwest-Regular.otf");
 }
 
 @font-face {
     font-family: NeueMontreal;
-    src: url("fonts/OTNeueMontreal-MediumSqueezed.otf");
+    src: url("../fonts/OTNeueMontreal-MediumSqueezed.otf");
 }
 
 :root {
