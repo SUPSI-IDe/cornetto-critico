@@ -257,8 +257,10 @@
 
       for (const source of CONFIG.pendingJsonSources) {
         try {
-          const separator = source.url.includes('?') ? '&' : '?';
-          const response = await fetch(`${source.url}${separator}t=${Date.now()}`, {
+          const requestUrl = source.type === 'github-contents'
+            ? source.url
+            : `${source.url}${source.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+          const response = await fetch(requestUrl, {
             cache: 'no-store',
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
