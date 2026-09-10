@@ -192,6 +192,8 @@
 
   return {
     DEFAULT_PENDING_JSON_SOURCES,
-    fetchSnapshot
+    decodeBase64Utf8,
+    fetchSnapshot,
+    getSnapshotRows
   };
 });
