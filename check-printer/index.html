@@ -279,6 +279,14 @@
           let rawText;
           if (source.type === 'github-contents') {
             const payloadResponse = await response.json();
+            if (!payloadResponse || typeof payloadResponse !== 'object' || Array.isArray(payloadResponse)) {
+              lastError = new Error(`GitHub API payload non valido (${source.label}): responseType=${Array.isArray(payloadResponse) ? 'array' : typeof payloadResponse}`);
+              continue;
+            }
+            if (payloadResponse.message) {
+              lastError = new Error(`GitHub API errore (${source.label}): ${payloadResponse.message}`);
+              continue;
+            }
             if (
               payloadResponse.type !== 'file' ||
               payloadResponse.encoding !== 'base64' ||
