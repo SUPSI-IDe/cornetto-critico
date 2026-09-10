@@ -1,11 +1,10 @@
 {
-  "total": 145,
-  "updated_at": "2026-09-09T16:52:30Z",
+  "total": 147,
+  "updated_at": "2026-09-10T08:12:06Z",
   "events": {
-    "MATERIA ANTICA": 42,
-    "MATERIA DI SPECIE": 2,
+    "MATERIA ANTICA": 40,
+    "MATERIA DI SPECIE": 8,
     "MATERIA PROFONDA": 51,
-    "MATERIA PROVA": 2,
     "MATERIA URBANA": 48
   }
 }
