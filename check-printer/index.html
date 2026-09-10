@@ -283,15 +283,17 @@
               lastError = new Error(`GitHub API payload non valido (${source.label}): responseType=${Array.isArray(payloadResponse) ? 'array' : typeof payloadResponse}`);
               continue;
             }
-            if (payloadResponse.message) {
+            const isValidFilePayload =
+              payloadResponse.type === 'file' &&
+              payloadResponse.encoding === 'base64' &&
+              !payloadResponse.truncated &&
+              typeof payloadResponse.content === 'string';
+            if (!isValidFilePayload && payloadResponse.message) {
               lastError = new Error(`GitHub API errore (${source.label}): ${payloadResponse.message}`);
               continue;
             }
             if (
-              payloadResponse.type !== 'file' ||
-              payloadResponse.encoding !== 'base64' ||
-              payloadResponse.truncated ||
-              typeof payloadResponse.content !== 'string'
+              !isValidFilePayload
             ) {
               lastError = new Error(
                 `GitHub API payload non valido (${source.label}): type=${payloadResponse.type || 'n/d'}, encoding=${payloadResponse.encoding || 'n/d'}, truncated=${String(Boolean(payloadResponse.truncated))}, hasContent=${String(typeof payloadResponse.content === 'string')}`
