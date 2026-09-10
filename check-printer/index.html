@@ -135,10 +135,19 @@
 
   <script>
     const CONFIG = {
-      pendingJsonPaths: [
-        'https://raw.githubusercontent.com/SUPSI-IDe/cornetto-critico/main/check-printer/pending.json',
-        './pending.json',
-        '/check-printer/pending.json'
+      pendingJsonSources: [
+        {
+          url: 'https://api.github.com/repos/SUPSI-IDe/cornetto-critico/contents/check-printer/pending.json?ref=main',
+          type: 'github-contents'
+        },
+        {
+          url: './pending.json',
+          type: 'plain-json'
+        },
+        {
+          url: '/check-printer/pending.json',
+          type: 'plain-json'
+        }
       ],
       staleAfterMs: 5 * 60 * 1000,
       dashboardPollMs: 10000,
@@ -238,9 +247,10 @@
     async function fetchSnapshot() {
       let lastError = null;
 
-      for (const path of CONFIG.pendingJsonPaths) {
+      for (const source of CONFIG.pendingJsonSources) {
         try {
-          const response = await fetch(`${path}?t=${Date.now()}`, {
+          const separator = source.url.includes('?') ? '&' : '?';
+          const response = await fetch(`${source.url}${separator}t=${Date.now()}`, {
             cache: 'no-store',
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -249,16 +259,23 @@
           });
 
           if (!response.ok) {
-            lastError = new Error(`Snapshot ${response.status} (${path})`);
+            lastError = new Error(`Snapshot ${response.status} (${source.url})`);
             continue;
           }
 
-          const rawText = await response.text();
+          let rawText;
+          if (source.type === 'github-contents') {
+            const payloadResponse = await response.json();
+            rawText = atob((payloadResponse.content || '').replace(/\s+/g, ''));
+          } else {
+            rawText = await response.text();
+          }
+
           const trimmedText = rawText.trim();
           const payload = trimmedText ? JSON.parse(trimmedText) : [];
           const rows = getSnapshotRows(payload);
           if (!rows) {
-            lastError = new Error(`Formato pending.json non valido (${path})`);
+            lastError = new Error(`Formato pending.json non valido (${source.url})`);
             continue;
           }
 

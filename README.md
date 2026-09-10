@@ -85,7 +85,7 @@ Il codice Arduino per la stampante termica si trova in `printScontrino/`.
 
 ## Dashboard pending
 
-La dashboard di controllo si trova in `check-printer/` e usa `pending.json` come snapshot delle registrazioni ancora da stampare. Il file viene generato dal workflow `update-pending-dashboard.yml` e la pagina lo legge direttamente dal branch `main`, quindi non richiede un nuovo deploy di Pages per i soli aggiornamenti dati.
+La dashboard di controllo si trova in `check-printer/` e usa `pending.json` come snapshot delle registrazioni ancora da stampare. Il file viene generato dal workflow `update-pending-dashboard.yml` e la pagina lo legge direttamente dal branch `main` tramite GitHub API, quindi non richiede un nuovo deploy di Pages per i soli aggiornamenti dati.
 
 ## Registrazioni
 
