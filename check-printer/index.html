@@ -219,6 +219,14 @@
       }).format(date);
     }
 
+    function decodeBase64Utf8(value) {
+      const binary = atob(value);
+      const bytes = Uint8Array.from(binary, function(char) {
+        return char.charCodeAt(0);
+      });
+      return new TextDecoder().decode(bytes);
+    }
+
     function computeNextGithubCheck(baseDate) {
       const baseMs = baseDate.getTime();
       const interval = CONFIG.githubActionIntervalMs;
@@ -266,7 +274,7 @@
           let rawText;
           if (source.type === 'github-contents') {
             const payloadResponse = await response.json();
-            rawText = atob((payloadResponse.content || '').replace(/\s+/g, ''));
+            rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
           } else {
             rawText = await response.text();
           }
