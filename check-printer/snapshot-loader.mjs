@@ -51,9 +51,16 @@ export function decodeBase64Utf8(value) {
 }
 
 function buildRequestUrl(source) {
-  return source.type === 'github-contents'
-    ? source.url
-    : `${source.url}${source.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+  if (source.type === 'github-contents') {
+    return source.url;
+  }
+
+  const baseUrl = typeof window !== 'undefined' && window.location
+    ? window.location.href
+    : 'https://example.test/check-printer/index.html';
+  const url = new URL(source.url, baseUrl);
+  url.searchParams.set('t', String(Date.now()));
+  return url.toString();
 }
 
 async function fetchPlainJsonText(fetchImpl, url) {
@@ -104,6 +111,9 @@ async function fetchGithubContentsText(fetchImpl, source) {
     try {
       return decodeBase64Utf8(payloadResponse.content.replace(/\s+/g, ''));
     } catch (error) {
+      if (isValidFilePayload && typeof payloadResponse.download_url === 'string' && payloadResponse.download_url) {
+        return fetchPlainJsonText(fetchImpl, payloadResponse.download_url);
+      }
       throw new Error(`Errore decodifica snapshot: ${error instanceof Error && error.message ? error.message : 'contenuto base64 non valido'}`);
     }
   }

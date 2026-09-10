@@ -107,3 +107,39 @@ test('fetchSnapshot uses download_url when content is omitted', async function()
   assert.equal(result.updated_at, '2026-09-10T08:10:00Z');
   assert.deepEqual(result.pending, []);
 });
+
+test('fetchSnapshot uses download_url when base64 content is invalid', async function() {
+  const payload = {
+    type: 'file',
+    encoding: 'base64',
+    truncated: false,
+    content: '***not-base64***',
+    download_url: 'https://example.test/pending-invalid-base64.json'
+  };
+
+  const fetchImpl = async function(url) {
+    if (url === 'https://api.github.com/test') {
+      return {
+        ok: true,
+        async json() {
+          return payload;
+        }
+      };
+    }
+
+    assert.equal(url, 'https://example.test/pending-invalid-base64.json');
+    return {
+      ok: true,
+      async text() {
+        return '{"updated_at":"2026-09-10T08:15:00Z","pending":[{"id":4,"print_status":"pending"}]}';
+      }
+    };
+  };
+
+  const result = await fetchSnapshot(fetchImpl, [
+    { url: 'https://api.github.com/test', type: 'github-contents', label: 'github-contents' }
+  ]);
+
+  assert.equal(result.updated_at, '2026-09-10T08:15:00Z');
+  assert.deepEqual(result.pending, [{ id: 4, print_status: 'pending' }]);
+});
