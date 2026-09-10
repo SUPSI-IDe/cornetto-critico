@@ -68,10 +68,10 @@ SUPABASE_KEY=your-secret-key
 
 I workflow principali sono:
 
-- **`update-count.yml`** — si esegue ogni 15 minuti, interroga Supabase, aggiorna `count.json` e fa commit su `main`
-- **`update-pending-dashboard.yml`** — aggiorna `check-printer/pending.json` con le registrazioni ancora in stato pending
+- **`update-count.yml`** — si esegue su schedulazione, interroga Supabase, aggiorna `count.json` e fa commit su `main`
+- **`update-pending-dashboard.yml`** — si esegue ogni 15 minuti (ai minuti 7, 22, 37 e 52), aggiorna `check-printer/pending.json` con le registrazioni ancora in stato pending
 - **`register.yml`** — inserisce una nuova registrazione in Supabase tramite `repository_dispatch` o `workflow_dispatch`
-- **`deploy.yml`** — si esegue ad ogni push su `main`, pubblica il sito su GitHub Pages
+- **`deploy.yml`** — si esegue ad ogni push su `main` e al termine dei workflow di aggiornamento dati, pubblicando il sito su GitHub Pages anche dopo gli aggiornamenti automatici
 
 Assicurarsi che in **Settings → Pages → Source** sia selezionato **"GitHub Actions"**.
 
