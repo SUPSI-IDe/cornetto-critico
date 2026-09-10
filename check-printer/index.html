@@ -169,12 +169,22 @@
         return payload;
       }
 
+      // Empty payloads are valid and mean no pending records.
+      if (payload == null) {
+        return [];
+      }
+
       if (payload && Array.isArray(payload.pending)) {
         return payload.pending;
       }
 
       if (payload && Array.isArray(payload.registrations)) {
         return payload.registrations;
+      }
+
+      // Accept empty objects as an empty queue.
+      if (payload && typeof payload === 'object' && Object.keys(payload).length === 0) {
+        return [];
       }
 
       return null;
@@ -239,7 +249,9 @@
             continue;
           }
 
-          const payload = await response.json();
+          const rawText = await response.text();
+          const trimmedText = rawText.trim();
+          const payload = trimmedText ? JSON.parse(trimmedText) : [];
           const rows = getSnapshotRows(payload);
           if (!rows) {
             lastError = new Error(`Formato pending.json non valido (${path})`);
@@ -345,6 +357,11 @@
         }
       } catch (error) {
         setStatus(`Errore: ${error.message}`, true);
+        pendingTotalEl.textContent = '0';
+        pendingStaleEl.textContent = '0';
+        state.nextGithubCheckAt = null;
+        renderNextGithubCountdown();
+        renderQueue([]);
         snapshotUpdatedAtEl.textContent = 'Snapshot: errore caricamento';
       }
     }

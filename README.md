@@ -1,4 +1,4 @@
-# Cornetto Critico - Sito web
+# Cornetto Critico - Progetto
 
 Quando parliamo di materia, non nominiamo soltanto ciò di cui le cose sono fatte. Nella sua radice si conserva un’idea di costruzione e di composizione che apre la parola ben oltre la sostanza, facendone un punto di accesso alle diverse dimensioni della ricerca e del progetto. È nella materia, infatti, che una pratica prende forma, che un sapere si traduce, che un’idea entra in relazione con il mondo.
 È da questa soglia che prende avvio Cornetto Critico, come riflessione interdisciplinare sulla materia intesa come interfaccia sensibile attraverso la quale la vita si manifesta secondo un processo continuo di azione e reazione. Una trama complessa di legami chimici, culturali, ecologici e tecnologici attraversa così l’intera rassegna, disponendosi in una costellazione di campi di relazione che ne orientano la lettura: individuo–spazio pubblico, superficie–profondità, pratica–sapere, specie–ecosistema, vivente–risorsa, dispositivo–infrastruttura, percezione–automazione. 
@@ -7,13 +7,22 @@ La rassegna si articola in sette incontri, intesi come sette declinazioni della 
 
 Website design [@Alice Mioni](https://alicemioni.ch/) & [@Alessandro Plantera](https://alessandroplantera.ch/)
 
-Website implementation [@Alice Mioni](https://alicemioni.ch/) [@Alessandro Plantera](https://alessandroplantera.ch/) & [@Matteo Subet](https://zumat.ch/)
+Website and hardware implementation [@Alice Mioni](https://alicemioni.ch/) [@Alessandro Plantera](https://alessandroplantera.ch/) & [@Matteo Subet](https://zumat.ch/)
 
 ## Informazioni
 
-Sito statico che mostra informazioni sul Cornetto Critico e le iscrizioni per evento.
+Questa repository raccoglie l'intero progetto Cornetto Critico: il sito informativo, la pagina iscrizioni, i flussi di sincronizzazione dati e il codice per la stampante termica.
 
-Il conteggio viene aggiornato da GitHub Actions usando le repository secrets `SUPABASE_URL` e `SUPABASE_KEY`, che generano il file `count.json` con il totale e il dettaglio per evento.
+## Componenti
+
+- **Sito principale** — presenta il progetto, gli eventi e il conteggio delle iscrizioni
+- **Pagina Iscrizioni** — gestisce la registrazione dei partecipanti e l'inserimento dei dati su Supabase
+- **Dashboard pending** — mostra le registrazioni in attesa di stampa e legge `check-printer/pending.json`
+- **Codice per stampante termica** — sketch Arduino/ESP32 in `printScontrino/` per la gestione della stampante e dello stato di stampa
+
+## Dati
+
+Il conteggio iscrizioni viene aggiornato da GitHub Actions usando le repository secrets `SUPABASE_URL` e `SUPABASE_KEY`, che generano `count.json` con il totale e il dettaglio per evento.
 
 ## Struttura di count.json
 
@@ -32,7 +41,7 @@ Il conteggio viene aggiornato da GitHub Actions usando le repository secrets `SU
 
 Servire la cartella con un server statico (es. Five Server) oppure aprire il sito pubblicato su GitHub Pages.
 
-In locale il sito legge `count.json` direttamente — nessuna chiave API esposta nel browser.
+In locale il sito legge `count.json` direttamente, senza esporre chiavi API nel browser.
 
 ## Aggiornare count.json in locale
 
@@ -42,11 +51,11 @@ Assicurarsi di avere `curl` e `jq` installati, poi eseguire:
 ./fetch-count.sh
 ```
 
-Lo script legge le credenziali da `.env` e sovrascrive `count.json` con i dati reali da Supabase, replicando esattamente il comportamento del workflow GitHub Actions.
+Lo script legge le credenziali da `.env` e sovrascrive `count.json` con i dati reali da Supabase, replicando il comportamento del workflow GitHub Actions.
 
 ## Variabili ambiente
 
-Le secrets non vengono mai lette dal browser. Vengono usate solo dal workflow `update-count.yml` e dallo script locale `fetch-count.sh`.
+Le secrets non vengono mai lette dal browser. Vengono usate solo dai workflow `update-count.yml`, `update-pending-dashboard.yml`, `register.yml` e dallo script locale `fetch-count.sh`.
 
 Creare un file `.env` nella root del progetto:
 
@@ -57,12 +66,30 @@ SUPABASE_KEY=your-secret-key
 
 ## GitHub Actions
 
-Due workflow:
+I workflow principali sono:
 
 - **`update-count.yml`** — si esegue ogni 15 minuti, interroga Supabase, aggiorna `count.json` e fa commit su `main`
+- **`update-pending-dashboard.yml`** — aggiorna `check-printer/pending.json` con le registrazioni ancora in stato pending
+- **`register.yml`** — inserisce una nuova registrazione in Supabase tramite `repository_dispatch` o `workflow_dispatch`
 - **`deploy.yml`** — si esegue ad ogni push su `main`, pubblica il sito su GitHub Pages
 
 Assicurarsi che in **Settings → Pages → Source** sia selezionato **"GitHub Actions"**.
+
+## Stampante termica
+
+Il codice Arduino per la stampante termica si trova in `printScontrino/`.
+
+- il progetto è pensato per ESP32 con connessione Wi-Fi
+- la stampa legge le registrazioni pending da Supabase
+- il flusso aggiorna lo stato della registrazione dopo la stampa e associa il `printer_id`
+
+## Dashboard pending
+
+La dashboard di controllo si trova in `check-printer/` e usa `pending.json` come snapshot locale delle registrazioni ancora da stampare. Il file viene generato dal workflow `update-pending-dashboard.yml`.
+
+## Registrazioni
+
+La pagina iscrizioni si trova in `iscrizioni/` e invia i dati al flusso di registrazione automatizzato. Il workflow `register.yml` crea il record su Supabase con i dati dell'evento e del partecipante.
 
 ## Creare fetch-count.sh in locale
 

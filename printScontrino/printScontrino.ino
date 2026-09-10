@@ -36,6 +36,8 @@ constexpr bool REQUIRE_PRINTER_STATUS_RESPONSE = true;
 
 HardwareSerial printerSerial(1);
 WiFiClientSecure secureClient;
+String supabaseAccessToken;
+unsigned long supabaseTokenExpiresAtMs = 0;
 
 struct Registration {
   int id = -1;
@@ -110,8 +112,94 @@ bool beginRequest(HTTPClient &http, const String &url) {
 
   http.setTimeout(HTTP_TIMEOUT_MS);
   http.addHeader("apikey", SUPABASE_ANON_KEY);
-  http.addHeader("Authorization", String("Bearer ") + SUPABASE_ANON_KEY);
   http.addHeader("Accept", "application/json");
+  return true;
+}
+
+bool hasValidSupabaseSession() {
+  if (supabaseAccessToken.length() == 0) {
+    return false;
+  }
+
+  const unsigned long nowMs = millis();
+  const unsigned long safetyWindowMs = 60000;
+  return nowMs + safetyWindowMs < supabaseTokenExpiresAtMs;
+}
+
+bool authenticateSupabase() {
+  if (hasValidSupabaseSession()) {
+    return true;
+  }
+
+  if (String(SUPABASE_AUTH_EMAIL).length() == 0 || String(SUPABASE_AUTH_PASSWORD).length() == 0) {
+    logLine("Missing Supabase auth credentials for UPDATE.");
+    return false;
+  }
+
+  HTTPClient http;
+  const String authUrl = String(SUPABASE_URL) + "/auth/v1/token?grant_type=password";
+  secureClient.setInsecure();
+  if (!http.begin(secureClient, authUrl)) {
+    logLine("Supabase auth HTTP begin failed.");
+    return false;
+  }
+
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  http.addHeader("apikey", SUPABASE_ANON_KEY);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Accept", "application/json");
+
+  StaticJsonDocument<256> authBody;
+  authBody["email"] = SUPABASE_AUTH_EMAIL;
+  authBody["password"] = SUPABASE_AUTH_PASSWORD;
+  String authPayload;
+  serializeJson(authBody, authPayload);
+
+  const int statusCode = http.POST(authPayload);
+  const String responseBody = http.getString();
+  http.end();
+
+  if (statusCode != HTTP_CODE_OK) {
+    logLine("Supabase auth failed: " + String(statusCode) + " " + responseBody);
+    return false;
+  }
+
+  DynamicJsonDocument authDocument(2048);
+  DeserializationError error = deserializeJson(authDocument, responseBody);
+  if (error) {
+    logLine("Unable to parse Supabase auth payload: " + String(error.c_str()));
+    return false;
+  }
+
+  const char *token = authDocument["access_token"] | "";
+  const unsigned long expiresInSeconds = authDocument["expires_in"] | 3600;
+
+  if (String(token).length() == 0) {
+    logLine("Supabase auth payload missing access_token.");
+    return false;
+  }
+
+  supabaseAccessToken = String(token);
+  supabaseTokenExpiresAtMs = millis() + (expiresInSeconds * 1000UL);
+  logLine("Supabase auth session acquired for UPDATE.");
+  return true;
+}
+
+bool beginRequestWithAuth(HTTPClient &http, const String &url, bool requiresAuthenticatedUser) {
+  if (!beginRequest(http, url)) {
+    return false;
+  }
+
+  if (requiresAuthenticatedUser) {
+    if (!authenticateSupabase()) {
+      http.end();
+      return false;
+    }
+    http.addHeader("Authorization", String("Bearer ") + supabaseAccessToken);
+  } else {
+    http.addHeader("Authorization", String("Bearer ") + SUPABASE_ANON_KEY);
+  }
+
   return true;
 }
 
@@ -125,7 +213,7 @@ bool fetchNextPendingRegistration(Registration &registration) {
     "&order=created_at.asc"
     "&limit=1";
 
-  if (!beginRequest(http, url)) {
+  if (!beginRequestWithAuth(http, url, false)) {
     return false;
   }
 
@@ -184,7 +272,7 @@ bool patchRegistrationPrinted(int registrationId) {
       "&print_status=eq.pending"
       "&limit=1";
 
-    if (!beginRequest(verifyHttp, verifyUrl)) {
+    if (!beginRequestWithAuth(verifyHttp, verifyUrl, true)) {
       logLine("Pending-check HTTP begin failed.");
       return true;
     }
@@ -212,7 +300,7 @@ bool patchRegistrationPrinted(int registrationId) {
   auto tryPatch = [&](const String &url, bool withPendingFilter, bool includePrinterId) {
     HTTPClient http;
 
-    if (!beginRequest(http, url)) {
+    if (!beginRequestWithAuth(http, url, true)) {
       return false;
     }
 
@@ -431,22 +519,27 @@ bool printReceipt(const Registration &registration) {
   printerSetAlign(1);
   printerPrintRasterImage(TITLE_BITMAP_DATA, TITLE_BITMAP_WIDTH, TITLE_BITMAP_HEIGHT);
   printerFeed(1);
+  delay(100);
 
   printerSetTextSize(0x00);
   printerSetBold(false);
   printerFeed(1);
   printerSerial.println(registration.eventName);
+  delay(100);
   printerSerial.println("17.09.2026");
+  delay(100);
   printerFeed(1);
 
   if (registration.speakerCount > 0) {
     printerFeed(1);
     printerSetBold(true);
     printerSerial.println("Relatori");
+    delay(100);
     printerSetBold(false);
 
     for (size_t index = 0; index < registration.speakerCount; ++index) {
       printerSerial.println(registration.speakerNames[index]);
+      delay(100);
     }
   }
 
@@ -454,23 +547,34 @@ bool printReceipt(const Registration &registration) {
   printerSetAlign(0);
   printerSetBold(true);
   printerSerial.println("ISCRIZIONE CONFERMATA");
+  delay(100);
   printerSetBold(false);
   printerSerial.println("--------------------------------");
+  delay(100);
   printerSerial.println("Nome: " + registration.attendeeName);
+  delay(100);
   printerSerial.println("Email: " + registration.attendeeEmail);
+  delay(100);
   printerSerial.println("Registrazione ID: " + String(registration.id));
+  delay(100);
   printerSerial.println("Creata il: " + registration.createdAt);
+  delay(100);
   printerSerial.println("--------------------------------");
+  delay(100);
   printerFeed(1);
 
   printerSetAlign(1);
   printerPrintRasterImageCentered(CORNETTO_BITMAP_DATA, CORNETTO_BITMAP_WIDTH, CORNETTO_BITMAP_HEIGHT);
   printerFeed(1);
+  delay(100);
 
   printerSetAlign(1);
   printerFeed(2);
   printerSerial.println("CONSERVA QUESTO SCONTRINO");
-  printerFeed(5);
+  delay(100);
+  printerSerial.println("PER RITIRARE IL TUO CORNETTO");
+  delay(100);
+  printerFeed(10);
   printerCut();
   printerSerial.flush();
   delay(500);
