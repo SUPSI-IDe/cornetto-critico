@@ -278,7 +278,12 @@
               lastError = new Error(`GitHub API payload non valido (${source.url})`);
               continue;
             }
-            rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
+            try {
+              rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
+            } catch (error) {
+              lastError = error;
+              continue;
+            }
           } else {
             rawText = await response.text();
           }
