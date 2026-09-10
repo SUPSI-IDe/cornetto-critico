@@ -10,3 +10,4 @@ fetch-count.sh
 CSN-A2+User+Manual.pdf
 printer/printScontrino.ino
 printScontrino/secrets.h
+check-printer/venv
