@@ -138,15 +138,18 @@
       pendingJsonSources: [
         {
           url: 'https://api.github.com/repos/SUPSI-IDe/cornetto-critico/contents/check-printer/pending.json?ref=main',
-          type: 'github-contents'
+          type: 'github-contents',
+          label: 'github-contents'
         },
         {
           url: './pending.json',
-          type: 'plain-json'
+          type: 'plain-json',
+          label: 'local snapshot'
         },
         {
           url: '/check-printer/pending.json',
-          type: 'plain-json'
+          type: 'plain-json',
+          label: 'pages snapshot'
         }
       ],
       staleAfterMs: 5 * 60 * 1000,
@@ -269,7 +272,7 @@
           });
 
           if (!response.ok) {
-            lastError = new Error(`Snapshot ${response.status} (${source.url})`);
+            lastError = new Error(`Snapshot ${response.status} (${source.label})`);
             continue;
           }
 
@@ -283,7 +286,7 @@
               typeof payloadResponse.content !== 'string'
             ) {
               lastError = new Error(
-                `GitHub API payload non valido (${source.url}): type=${payloadResponse.type || 'n/d'}, encoding=${payloadResponse.encoding || 'n/d'}, truncated=${String(Boolean(payloadResponse.truncated))}, hasContent=${String(typeof payloadResponse.content === 'string')}`
+                `GitHub API payload non valido (${source.label}): type=${payloadResponse.type || 'n/d'}, encoding=${payloadResponse.encoding || 'n/d'}, truncated=${String(Boolean(payloadResponse.truncated))}, hasContent=${String(typeof payloadResponse.content === 'string')}`
               );
               continue;
             }
@@ -302,7 +305,7 @@
           const rows = getSnapshotRows(payload);
           if (!rows) {
             const payloadType = Array.isArray(payload) ? 'array' : typeof payload;
-            lastError = new Error(`Formato pending.json non valido (${source.url}): payloadType=${payloadType}, hasPendingArray=${String(Boolean(payload && Array.isArray(payload.pending)))}, hasRegistrationsArray=${String(Boolean(payload && Array.isArray(payload.registrations)))}`);
+            lastError = new Error(`Formato pending.json non valido (${source.label}): payloadType=${payloadType}, hasPendingArray=${String(Boolean(payload && Array.isArray(payload.pending)))}, hasRegistrationsArray=${String(Boolean(payload && Array.isArray(payload.registrations)))}`);
             continue;
           }
 
