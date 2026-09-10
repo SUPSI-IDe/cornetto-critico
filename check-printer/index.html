@@ -155,10 +155,29 @@
     const enableNotificationsButtonEl = document.getElementById('enable-notifications');
 
     function formatAge(ms) {
+      if (!Number.isFinite(ms) || ms < 0) {
+        return 'n/d';
+      }
       const totalSeconds = Math.max(0, Math.floor(ms / 1000));
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+    }
+
+    function getSnapshotRows(payload) {
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+
+      if (payload && Array.isArray(payload.pending)) {
+        return payload.pending;
+      }
+
+      if (payload && Array.isArray(payload.registrations)) {
+        return payload.registrations;
+      }
+
+      return null;
     }
 
     function setStatus(text, isAlert) {
@@ -221,12 +240,16 @@
           }
 
           const payload = await response.json();
-          if (!payload || !Array.isArray(payload.pending)) {
+          const rows = getSnapshotRows(payload);
+          if (!rows) {
             lastError = new Error(`Formato pending.json non valido (${path})`);
             continue;
           }
 
-          return payload;
+          return {
+            updated_at: payload && payload.updated_at ? payload.updated_at : null,
+            pending: rows
+          };
         } catch (error) {
           lastError = error;
         }
@@ -238,14 +261,20 @@
     function normalizeRows(rows) {
       const now = Date.now();
       return rows.map(function(row) {
-        const createdAt = new Date(row.created_at);
-        const ageMs = now - createdAt.getTime();
+        const createdAtRaw = row.created_at || row.createdAt || null;
+        const createdAtMs = createdAtRaw ? Date.parse(createdAtRaw) : NaN;
+        const ageMs = Number.isFinite(createdAtMs) ? Math.max(0, now - createdAtMs) : NaN;
+        const printStatus = String(row.print_status || row.printStatus || 'pending').toLowerCase();
         return {
           id: row.id,
           eventName: row.event_name || 'Evento sconosciuto',
+          createdAtRaw,
+          printStatus,
           ageMs,
-          isStale: ageMs >= CONFIG.staleAfterMs
+          isStale: Number.isFinite(ageMs) && ageMs >= CONFIG.staleAfterMs
         };
+      }).filter(function(row) {
+        return row.printStatus === 'pending';
       });
     }
 
@@ -257,7 +286,8 @@
 
       queueListEl.innerHTML = items.map(function(item) {
         const stale = item.isStale ? ' - OLTRE 5 MIN' : '';
-        return `<li><strong>#${item.id}</strong> ${item.eventName}<br><span class="muted">In coda da ${formatAge(item.ageMs)}${stale}</span></li>`;
+        const ageLabel = Number.isFinite(item.ageMs) ? `In coda da ${formatAge(item.ageMs)}` : 'Data creazione non disponibile';
+        return `<li><strong>#${item.id}</strong> ${item.eventName}<br><span class="muted">${ageLabel}${stale}</span></li>`;
       }).join('');
     }
 
@@ -300,10 +330,11 @@
         renderQueue(items);
         notifyStale(items);
 
-        const snapshotDate = snapshot.updated_at ? new Date(snapshot.updated_at) : new Date();
+        const parsedUpdatedAt = snapshot.updated_at ? new Date(snapshot.updated_at) : null;
+        const snapshotDate = parsedUpdatedAt && !Number.isNaN(parsedUpdatedAt.getTime()) ? parsedUpdatedAt : new Date();
         state.nextGithubCheckAt = computeNextGithubCheck(snapshotDate);
         renderNextGithubCountdown();
-        snapshotUpdatedAtEl.textContent = `Snapshot: ${formatDateTime(snapshot.updated_at || snapshotDate)}`;
+        snapshotUpdatedAtEl.textContent = `Snapshot: ${formatDateTime(snapshot.updated_at || snapshotDate.toISOString())}`;
 
         if (staleCount > 0) {
           setStatus(`${staleCount} pending oltre soglia`, true);

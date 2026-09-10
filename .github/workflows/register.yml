@@ -13,6 +13,10 @@ on:
         description: Event name
         required: true
         type: string
+      event_date:
+        description: Event date (YYYY-MM-DD)
+        required: true
+        type: string
       attendee_name:
         description: Attendee name
         required: true
@@ -38,7 +42,18 @@ jobs:
       - name: Build registration payload
         id: payload
         run: |
+          validate_iso_date() {
+            echo "$1" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          }
+
           if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            EVENT_DATE=$(echo '${{ toJson(github.event.client_payload) }}' | jq -r '.event_date // empty')
+
+            if ! validate_iso_date "$EVENT_DATE"; then
+              echo "event_date must be in YYYY-MM-DD format"
+              exit 1
+            fi
+
             {
               echo 'json<<EOF'
               echo '${{ toJson(github.event.client_payload) }}'
@@ -46,6 +61,12 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           else
             SPEAKER_NAMES='${{ github.event.inputs.speaker_names }}'
+            EVENT_DATE='${{ github.event.inputs.event_date }}'
+
+            if ! validate_iso_date "$EVENT_DATE"; then
+              echo "event_date must be in YYYY-MM-DD format"
+              exit 1
+            fi
 
             if ! echo "$SPEAKER_NAMES" | jq -e 'type == "array"' >/dev/null 2>&1; then
               echo "speaker_names must be a JSON array string"
@@ -55,6 +76,7 @@ jobs:
             PAYLOAD_JSON=$(jq -cn \
               --arg event_slug '${{ github.event.inputs.event_slug }}' \
               --arg event_name '${{ github.event.inputs.event_name }}' \
+              --arg event_date "$EVENT_DATE" \
               --arg attendee_name '${{ github.event.inputs.attendee_name }}' \
               --arg attendee_email '${{ github.event.inputs.attendee_email }}' \
               --arg print_status '${{ github.event.inputs.print_status }}' \
@@ -62,6 +84,7 @@ jobs:
               '{
                 event_slug: $event_slug,
                 event_name: $event_name,
+                event_date: $event_date,
                 attendee_name: $attendee_name,
                 attendee_email: $attendee_email,
                 speaker_names: $speaker_names,

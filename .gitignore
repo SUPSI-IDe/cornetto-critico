@@ -9,3 +9,4 @@ fetch-count.sh
 .supabase
 CSN-A2+User+Manual.pdf
 printer/printScontrino.ino
+printScontrino/secrets.h

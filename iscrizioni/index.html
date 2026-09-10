@@ -21,7 +21,7 @@
     <div class="decoration" aria-hidden="true"></div>
     <div class="event-meta">
       <h1 id="event-name"></h1>
-      <h1 class="event-date">28.04.2026</h1>
+      <h1 class="event-date"></h1>
     </div>
 
     <h2 class="organizzatori-title">ORGANIZZATORI</h2>
@@ -45,30 +45,76 @@
   <div id="status"></div>
 
   <script>
-    const EVENT = {
-      slug: 'materia-specie',
-      name: 'MATERIA DI SPECIE',
-      speakers: ['RED CALORE', 'CLAUDIA HOWALD']
-    };
-
     const PUBLIC_ACTION_TRIGGER_URL = 'https://publicactiontrigger.azurewebsites.net/api/dispatches/SUPSI-IDe/cornetto-critico';
 
     const eventNameEl  = document.getElementById('event-name');
+    const eventDateEl  = document.querySelector('.event-date');
     const speakerListEl = document.getElementById('speaker-list');
     const formEl       = document.getElementById('registration-form');
     const statusEl     = document.getElementById('status');
     const submitBtnEl  = document.getElementById('submit-btn');
+    let EVENT = null;
     let successMessageTimeoutId = null;
 
-    eventNameEl.textContent = EVENT.name;
+    async function loadEventInfo() {
+      const urlCandidates = [
+        new URL('./info.json', window.location.href).toString(),
+        `${window.location.origin}/iscrizioni/info.json`
+      ];
 
-    EVENT.speakers.forEach(function(speaker) {
-      const li = document.createElement('li');
-      const mark = document.createElement('mark');
-      mark.textContent = speaker;
-      li.appendChild(mark);
-      speakerListEl.appendChild(li);
-    });
+      let lastError = null;
+      for (const url of urlCandidates) {
+        const res = await fetch(url);
+        if (res.ok) {
+          return res.json();
+        }
+
+        const errorBody = await res.text();
+        lastError = new Error(`HTTP ${res.status} ${url} ${errorBody}`);
+      }
+
+      throw lastError || new Error('Impossibile caricare info.json');
+    }
+
+    function toIsoDateFromDisplay(displayDate) {
+      const match = /^([0-3]\d)\.([0-1]\d)\.(\d{4})$/.exec(displayDate.trim());
+      if (!match) return null;
+      const day = match[1];
+      const month = match[2];
+      const year = match[3];
+      return `${year}-${month}-${day}`;
+    }
+
+    function renderEventInfo() {
+      eventNameEl.textContent = EVENT.name;
+      eventDateEl.textContent = EVENT.displayDate;
+
+      speakerListEl.innerHTML = '';
+      EVENT.speakers.forEach(function(speaker) {
+        const li = document.createElement('li');
+        const mark = document.createElement('mark');
+        mark.textContent = speaker;
+        li.appendChild(mark);
+        speakerListEl.appendChild(li);
+      });
+    }
+
+    async function initializePage() {
+      submitBtnEl.disabled = true;
+      statusEl.textContent = 'Caricamento evento...';
+
+      try {
+        EVENT = await loadEventInfo();
+        renderEventInfo();
+        statusEl.textContent = '';
+        submitBtnEl.disabled = false;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Errore durante il caricamento evento.';
+      }
+    }
+
+    initializePage();
 
     formEl.addEventListener('submit', async function(event) {
       event.preventDefault();
@@ -80,8 +126,9 @@
 
       const attendee_name  = document.getElementById('name').value.trim().toUpperCase();
       const attendee_email = document.getElementById('email').value.trim();
+      const selected_event_date = toIsoDateFromDisplay(eventDateEl.textContent || '');
 
-      if (!attendee_name || !attendee_email) {
+      if (!EVENT || !selected_event_date || !attendee_name || !attendee_email) {
         statusEl.textContent = 'Compila tutti i campi.';
         return;
       }
@@ -98,6 +145,7 @@
         const registrationPayload = {
           event_slug: EVENT.slug,
           event_name: EVENT.name,
+          event_date: selected_event_date,
           attendee_name,
           attendee_email,
           speaker_names: EVENT.speakers,
