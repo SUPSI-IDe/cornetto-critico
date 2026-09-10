@@ -8,6 +8,13 @@ test('decodeBase64Utf8 decodes UTF-8 safely', function() {
   assert.equal(decodeBase64Utf8(encoded), '{"name":"Città"}');
 });
 
+test('decodeBase64Utf8 rejects invalid UTF-8 bytes', function() {
+  const encoded = Buffer.from([0xc3, 0x28]).toString('base64');
+  assert.throws(function() {
+    decodeBase64Utf8(encoded);
+  });
+});
+
 test('getSnapshotRows accepts supported shapes', function() {
   assert.deepEqual(getSnapshotRows([{ id: 1 }]), [{ id: 1 }]);
   assert.deepEqual(getSnapshotRows({ pending: [{ id: 2 }] }), [{ id: 2 }]);
@@ -142,4 +149,29 @@ test('fetchSnapshot uses download_url when base64 content is invalid', async fun
 
   assert.equal(result.updated_at, '2026-09-10T08:15:00Z');
   assert.deepEqual(result.pending, [{ id: 4, print_status: 'pending' }]);
+});
+
+test('fetchSnapshot preserves GitHub API error when all sources fail', async function() {
+  const fetchImpl = async function(url) {
+    if (url === 'https://api.github.com/test') {
+      return {
+        ok: true,
+        async json() {
+          return { message: 'API rate limit exceeded' };
+        }
+      };
+    }
+
+    return {
+      ok: false,
+      status: 404
+    };
+  };
+
+  await assert.rejects(
+    fetchSnapshot(fetchImpl, [
+      { url: 'https://api.github.com/test', type: 'github-contents', label: 'github-contents' }
+    ]),
+    /API rate limit exceeded/
+  );
 });

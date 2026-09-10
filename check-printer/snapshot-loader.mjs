@@ -63,6 +63,26 @@ function buildRequestUrl(source) {
   return url.toString();
 }
 
+function normalizeSource(source) {
+  if (typeof source === 'string') {
+    return {
+      url: source,
+      type: 'plain-json',
+      label: source
+    };
+  }
+
+  if (!source || typeof source !== 'object' || typeof source.url !== 'string') {
+    throw new Error('Sorgente snapshot non valida');
+  }
+
+  return {
+    type: 'plain-json',
+    label: source.label || source.url,
+    ...source
+  };
+}
+
 async function fetchPlainJsonText(fetchImpl, url) {
   const response = await fetchImpl(url, {
     cache: 'no-store',
@@ -148,14 +168,16 @@ export async function fetchSnapshot(fetchImpl, sources = DEFAULT_PENDING_JSON_SO
 
   for (const source of sources) {
     try {
-      const rawText = source.type === 'github-contents'
-        ? await fetchGithubContentsText(resolvedFetch, source)
-        : await fetchPlainJsonText(resolvedFetch, buildRequestUrl(source));
+      const normalizedSource = normalizeSource(source);
+      const rawText = normalizedSource.type === 'github-contents'
+        ? await fetchGithubContentsText(resolvedFetch, normalizedSource)
+        : await fetchPlainJsonText(resolvedFetch, buildRequestUrl(normalizedSource));
 
-      return parseSnapshotPayload(rawText, source);
+      return parseSnapshotPayload(rawText, normalizedSource);
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : 'errore sconosciuto';
-      lastError = new Error(`${message} (${source.label})`);
+      const label = typeof source === 'string' ? source : source && typeof source === 'object' && source.label ? source.label : 'sorgente sconosciuta';
+      lastError = new Error(`${message} (${label})`);
     }
   }
 
