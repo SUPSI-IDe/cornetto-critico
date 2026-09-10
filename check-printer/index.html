@@ -135,7 +135,11 @@
 
   <script>
     const CONFIG = {
-      pendingJsonPaths: ['./pending.json', '/check-printer/pending.json'],
+      pendingJsonPaths: [
+        'https://raw.githubusercontent.com/SUPSI-IDe/cornetto-critico/main/check-printer/pending.json',
+        './pending.json',
+        '/check-printer/pending.json'
+      ],
       staleAfterMs: 5 * 60 * 1000,
       dashboardPollMs: 10000,
       githubActionIntervalMs: 5 * 60 * 1000
