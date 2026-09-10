@@ -133,25 +133,11 @@
     </section>
   </main>
 
-  <script>
+  <script type="module">
+    import { DEFAULT_PENDING_JSON_SOURCES, fetchSnapshot } from './snapshot-loader.mjs';
+
     const CONFIG = {
-      pendingJsonSources: [
-        {
-          url: 'https://api.github.com/repos/SUPSI-IDe/cornetto-critico/contents/check-printer/pending.json?ref=main',
-          type: 'github-contents',
-          label: 'github-contents'
-        },
-        {
-          url: './pending.json',
-          type: 'plain-json',
-          label: 'local snapshot'
-        },
-        {
-          url: '/check-printer/pending.json',
-          type: 'plain-json',
-          label: 'pages snapshot'
-        }
-      ],
+      pendingJsonSources: DEFAULT_PENDING_JSON_SOURCES,
       staleAfterMs: 5 * 60 * 1000,
       dashboardPollMs: 10000,
       githubActionIntervalMs: 5 * 60 * 1000
@@ -180,32 +166,6 @@
       return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
     }
 
-    function getSnapshotRows(payload) {
-      if (Array.isArray(payload)) {
-        return payload;
-      }
-
-      // Empty payloads are valid and mean no pending records.
-      if (payload == null) {
-        return [];
-      }
-
-      if (payload && Array.isArray(payload.pending)) {
-        return payload.pending;
-      }
-
-      if (payload && Array.isArray(payload.registrations)) {
-        return payload.registrations;
-      }
-
-      // Accept empty objects as an empty queue.
-      if (payload && typeof payload === 'object' && Object.keys(payload).length === 0) {
-        return [];
-      }
-
-      return null;
-    }
-
     function setStatus(text, isAlert) {
       statusLabelEl.textContent = text;
       statusLabelEl.classList.toggle('alert', Boolean(isAlert));
@@ -220,14 +180,6 @@
         dateStyle: 'short',
         timeStyle: 'medium'
       }).format(date);
-    }
-
-    function decodeBase64Utf8(value) {
-      const binary = atob(value);
-      const bytes = Uint8Array.from(binary, function(char) {
-        return char.charCodeAt(0);
-      });
-      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     }
 
     function computeNextGithubCheck(baseDate) {
@@ -253,82 +205,6 @@
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       nextGithubCheckEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    async function fetchSnapshot() {
-      let lastError = null;
-
-      for (const source of CONFIG.pendingJsonSources) {
-        try {
-          const requestUrl = source.type === 'github-contents'
-            ? source.url
-            : `${source.url}${source.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-          const response = await fetch(requestUrl, {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              Pragma: 'no-cache'
-            }
-          });
-
-          if (!response.ok) {
-            lastError = new Error(`Snapshot ${response.status} (${source.label})`);
-            continue;
-          }
-
-          let rawText;
-          if (source.type === 'github-contents') {
-            const payloadResponse = await response.json();
-            if (!payloadResponse || typeof payloadResponse !== 'object' || Array.isArray(payloadResponse)) {
-              lastError = new Error(`GitHub API payload non valido (${source.label}): responseType=${Array.isArray(payloadResponse) ? 'array' : typeof payloadResponse}`);
-              continue;
-            }
-            const isValidFilePayload =
-              payloadResponse.type === 'file' &&
-              payloadResponse.encoding === 'base64' &&
-              !payloadResponse.truncated &&
-              typeof payloadResponse.content === 'string';
-            if (!isValidFilePayload && payloadResponse.message) {
-              lastError = new Error(`GitHub API errore (${source.label}): ${payloadResponse.message}`);
-              continue;
-            }
-            if (
-              !isValidFilePayload
-            ) {
-              lastError = new Error(
-                `GitHub API payload non valido (${source.label}): type=${payloadResponse.type || 'n/d'}, encoding=${payloadResponse.encoding || 'n/d'}, truncated=${String(Boolean(payloadResponse.truncated))}, hasContent=${String(typeof payloadResponse.content === 'string')}`
-              );
-              continue;
-            }
-            try {
-              rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
-            } catch (error) {
-              lastError = new Error(`Errore decodifica snapshot (${source.label}): ${error instanceof Error && error.message ? error.message : 'contenuto base64 non valido'}`);
-              continue;
-            }
-          } else {
-            rawText = await response.text();
-          }
-
-          const trimmedText = rawText.trim();
-          const payload = trimmedText ? JSON.parse(trimmedText) : [];
-          const rows = getSnapshotRows(payload);
-          if (!rows) {
-            const payloadType = Array.isArray(payload) ? 'array' : typeof payload;
-            lastError = new Error(`Formato pending.json non valido (${source.label}): payloadType=${payloadType}, hasPendingArray=${String(Boolean(payload && Array.isArray(payload.pending)))}, hasRegistrationsArray=${String(Boolean(payload && Array.isArray(payload.registrations)))}`);
-            continue;
-          }
-
-          return {
-            updated_at: payload && payload.updated_at ? payload.updated_at : null,
-            pending: rows
-          };
-        } catch (error) {
-          lastError = error;
-        }
-      }
-
-      throw lastError || new Error('Impossibile leggere pending.json');
     }
 
     function normalizeRows(rows) {
