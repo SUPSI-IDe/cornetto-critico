@@ -1,7 +1,7 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
 
-import { decodeBase64Utf8, fetchSnapshot, getSnapshotRows } from './snapshot-loader.mjs';
+const { decodeBase64Utf8, fetchSnapshot, getSnapshotRows } = require('./snapshot-loader.js');
 
 test('decodeBase64Utf8 decodes UTF-8 safely', function() {
   const encoded = Buffer.from('{"name":"Città"}', 'utf8').toString('base64');

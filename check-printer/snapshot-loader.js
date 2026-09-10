@@ -1,4 +1,10 @@
-(function() {
+(function(root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = api;
+  }
+  root.CornettoSnapshotLoader = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   const DEFAULT_PENDING_JSON_SOURCES = [
     {
       url: 'https://api.github.com/repos/SUPSI-IDe/cornetto-critico/contents/check-printer/pending.json?ref=main',
@@ -54,7 +60,10 @@
       return source.url;
     }
 
-    const url = new URL(source.url, window.location.href);
+    const baseUrl = typeof window !== 'undefined' && window.location
+      ? window.location.href
+      : 'https://example.test/check-printer/index.html';
+    const url = new URL(source.url, baseUrl);
     url.searchParams.set('t', String(Date.now()));
     return url.toString();
   }
@@ -181,8 +190,8 @@
     throw lastError || new Error('Impossibile leggere pending.json');
   }
 
-  window.CornettoSnapshotLoader = {
+  return {
     DEFAULT_PENDING_JSON_SOURCES,
     fetchSnapshot
   };
-})();
+});
