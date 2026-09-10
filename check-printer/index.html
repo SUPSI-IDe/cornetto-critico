@@ -275,7 +275,8 @@
           if (source.type === 'github-contents') {
             const payloadResponse = await response.json();
             if (payloadResponse.type !== 'file' || payloadResponse.encoding !== 'base64' || typeof payloadResponse.content !== 'string') {
-              throw new Error(`GitHub API payload non valido (${source.url})`);
+              lastError = new Error(`GitHub API payload non valido (${source.url})`);
+              continue;
             }
             rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
           } else {
