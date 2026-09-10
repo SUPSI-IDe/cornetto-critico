@@ -303,7 +303,7 @@
             try {
               rawText = decodeBase64Utf8((payloadResponse.content || '').replace(/\s+/g, ''));
             } catch (error) {
-              lastError = error;
+              lastError = new Error(`Errore decodifica snapshot (${source.label}): ${error instanceof Error && error.message ? error.message : 'contenuto base64 non valido'}`);
               continue;
             }
           } else {
