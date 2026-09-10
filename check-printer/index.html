@@ -133,8 +133,9 @@
     </section>
   </main>
 
-  <script type="module">
-    import { DEFAULT_PENDING_JSON_SOURCES, fetchSnapshot } from './snapshot-loader.mjs';
+  <script src="./snapshot-loader.js"></script>
+  <script>
+    const { DEFAULT_PENDING_JSON_SOURCES, fetchSnapshot } = window.CornettoSnapshotLoader;
 
     const CONFIG = {
       pendingJsonSources: DEFAULT_PENDING_JSON_SOURCES,
