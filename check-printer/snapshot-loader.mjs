@@ -137,7 +137,7 @@ function parseSnapshotPayload(rawText, source) {
   }
 
   return {
-    updated_at: payload && payload.updated_at ? payload.updated_at : null,
+    updated_at: payload && Object.prototype.hasOwnProperty.call(payload, 'updated_at') ? payload.updated_at : null,
     pending: rows
   };
 }
