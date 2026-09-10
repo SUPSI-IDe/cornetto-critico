@@ -142,14 +142,15 @@ function parseSnapshotPayload(rawText, source) {
   };
 }
 
-export async function fetchSnapshot(fetchImpl = fetch, sources = DEFAULT_PENDING_JSON_SOURCES) {
+export async function fetchSnapshot(fetchImpl, sources = DEFAULT_PENDING_JSON_SOURCES) {
+  const resolvedFetch = fetchImpl ?? fetch;
   let lastError = null;
 
   for (const source of sources) {
     try {
       const rawText = source.type === 'github-contents'
-        ? await fetchGithubContentsText(fetchImpl, source)
-        : await fetchPlainJsonText(fetchImpl, buildRequestUrl(source));
+        ? await fetchGithubContentsText(resolvedFetch, source)
+        : await fetchPlainJsonText(resolvedFetch, buildRequestUrl(source));
 
       return parseSnapshotPayload(rawText, source);
     } catch (error) {

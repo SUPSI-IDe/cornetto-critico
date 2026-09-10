@@ -139,8 +139,8 @@
   }
 
   async function fetchSnapshot(fetchImpl, sources) {
-    const resolvedFetch = fetchImpl || fetch;
-    const resolvedSources = sources || DEFAULT_PENDING_JSON_SOURCES;
+    const resolvedFetch = fetchImpl ?? fetch;
+    const resolvedSources = sources ?? DEFAULT_PENDING_JSON_SOURCES;
     let lastError = null;
 
     for (const source of resolvedSources) {
