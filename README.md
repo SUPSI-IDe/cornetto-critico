@@ -68,8 +68,8 @@ SUPABASE_KEY=your-secret-key
 
 I workflow principali sono:
 
-- **`update-count.yml`** — si esegue ogni 15 minuti, interroga Supabase, aggiorna `count.json` e fa commit su `main`
-- **`update-pending-dashboard.yml`** — aggiorna `check-printer/pending.json` con le registrazioni ancora in stato pending
+- **`update-count.yml`** — si esegue su schedulazione, interroga Supabase, aggiorna `count.json` e fa commit su `main`
+- **`update-pending-dashboard.yml`** — si esegue ogni 15 minuti (ai minuti 7, 22, 37 e 52), aggiorna `check-printer/pending.json` con le registrazioni ancora in stato pending
 - **`register.yml`** — inserisce una nuova registrazione in Supabase tramite `repository_dispatch` o `workflow_dispatch`
 - **`deploy.yml`** — si esegue ad ogni push su `main`, pubblica il sito su GitHub Pages
 
@@ -85,7 +85,7 @@ Il codice Arduino per la stampante termica si trova in `printScontrino/`.
 
 ## Dashboard pending
 
-La dashboard di controllo si trova in `check-printer/` e usa `pending.json` come snapshot locale delle registrazioni ancora da stampare. Il file viene generato dal workflow `update-pending-dashboard.yml`.
+La dashboard di controllo si trova in `check-printer/` e usa `pending.json` come snapshot delle registrazioni ancora da stampare. Il file viene generato dal workflow `update-pending-dashboard.yml` e la pagina lo legge direttamente dal branch `main` tramite GitHub API, quindi non richiede un nuovo deploy di Pages per i soli aggiornamenti dati.
 
 ## Registrazioni
 

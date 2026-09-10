@@ -133,9 +133,12 @@
     </section>
   </main>
 
+  <script src="./snapshot-loader.js"></script>
   <script>
+    const { DEFAULT_PENDING_JSON_SOURCES, fetchSnapshot } = window.CornettoSnapshotLoader;
+
     const CONFIG = {
-      pendingJsonPaths: ['./pending.json', '/check-printer/pending.json'],
+      pendingJsonSources: DEFAULT_PENDING_JSON_SOURCES,
       staleAfterMs: 5 * 60 * 1000,
       dashboardPollMs: 10000,
       githubActionIntervalMs: 5 * 60 * 1000
@@ -162,32 +165,6 @@
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
-    }
-
-    function getSnapshotRows(payload) {
-      if (Array.isArray(payload)) {
-        return payload;
-      }
-
-      // Empty payloads are valid and mean no pending records.
-      if (payload == null) {
-        return [];
-      }
-
-      if (payload && Array.isArray(payload.pending)) {
-        return payload.pending;
-      }
-
-      if (payload && Array.isArray(payload.registrations)) {
-        return payload.registrations;
-      }
-
-      // Accept empty objects as an empty queue.
-      if (payload && typeof payload === 'object' && Object.keys(payload).length === 0) {
-        return [];
-      }
-
-      return null;
     }
 
     function setStatus(text, isAlert) {
@@ -229,45 +206,6 @@
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       nextGithubCheckEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    async function fetchSnapshot() {
-      let lastError = null;
-
-      for (const path of CONFIG.pendingJsonPaths) {
-        try {
-          const response = await fetch(`${path}?t=${Date.now()}`, {
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              Pragma: 'no-cache'
-            }
-          });
-
-          if (!response.ok) {
-            lastError = new Error(`Snapshot ${response.status} (${path})`);
-            continue;
-          }
-
-          const rawText = await response.text();
-          const trimmedText = rawText.trim();
-          const payload = trimmedText ? JSON.parse(trimmedText) : [];
-          const rows = getSnapshotRows(payload);
-          if (!rows) {
-            lastError = new Error(`Formato pending.json non valido (${path})`);
-            continue;
-          }
-
-          return {
-            updated_at: payload && payload.updated_at ? payload.updated_at : null,
-            pending: rows
-          };
-        } catch (error) {
-          lastError = error;
-        }
-      }
-
-      throw lastError || new Error('Impossibile leggere pending.json');
     }
 
     function normalizeRows(rows) {
