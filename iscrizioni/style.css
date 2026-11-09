@@ -116,13 +116,21 @@ header img {
     display: grid;
     place-items: center;
     width: 100%;
-    height: fit-content;
+    min-height: 64px;
     margin: 0;
     padding: 0;
+    line-height: 0;
+    font-family: PPMondwest;
+    font-size: 64px;
+    text-align: center;
     background-image: url("../img/asterisk.svg");
     background-repeat: repeat-x;
-    background-size: 15px 20%;
+    background-size: 55px 50%;
     background-position: center;
+}
+
+.decoration::before {
+    content: "";
 }
 
 .video-wrapper {
@@ -151,8 +159,15 @@ header img {
     background: rgba(0, 0, 0, 0.85);
 }
 
+#print-dialog .decoration {
+    background-image: url("../img/asterisk.svg");
+    background-repeat: repeat-x;
+    background-size: 55px 30%;
+    background-position: center;
+}
+
 #print-dialog .decoration::before {
-    content: "*********";
+    content: "";
 }
 
 #print-countdown,
