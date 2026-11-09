@@ -81,22 +81,22 @@
       if (printDialogEl.open) printDialogEl.close();
     }
 
-    // 5s countdown "stampa in corso", poi 5s di gif "strappa verso l'alto"
+    // 10s countdown "stampa in corso", poi 7s di gif "strappa verso l'alto"
     function showPrintDialog() {
       closePrintDialog();
       printCountdownEl.hidden = false;
       printTearEl.hidden = true;
       printDialogEl.showModal();
 
-      for (let s = 5; s >= 1; s--) {
-        printTimers.push(setTimeout(function() { countdownNumberEl.textContent = s; }, (5 - s) * 1000));
+      for (let s = 10; s >= 1; s--) {
+        printTimers.push(setTimeout(function() { countdownNumberEl.textContent = s; }, (10 - s) * 1000));
       }
       printTimers.push(setTimeout(function() {
         printCountdownEl.hidden = true;
         printTearEl.hidden = false;
         printGifEl.src = '../img/strappa.gif?t=' + Date.now(); // riparte dal primo frame
-      }, 5000));
-      printTimers.push(setTimeout(closePrintDialog, 10000));
+      }, 10000));
+      printTimers.push(setTimeout(closePrintDialog, 17000));
     }
 
     printDialogEl.addEventListener('cancel', function(e) { e.preventDefault(); });
