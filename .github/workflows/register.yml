@@ -35,52 +35,50 @@ on:
         default: pending
         type: string
 
+# Il job non usa GITHUB_TOKEN: nessun permesso.
+permissions: {}
+
 jobs:
   insert:
     runs-on: ubuntu-latest
     steps:
+      # I dati arrivano da utenti esterni: passano solo come variabili d'ambiente,
+      # mai scritti dentro lo script con ${{ }}, così non possono diventare comandi.
       - name: Build registration payload
         id: payload
+        env:
+          TRIGGER: ${{ github.event_name }}
+          CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+          IN_EVENT_SLUG: ${{ github.event.inputs.event_slug }}
+          IN_EVENT_NAME: ${{ github.event.inputs.event_name }}
+          IN_EVENT_DATE: ${{ github.event.inputs.event_date }}
+          IN_ATTENDEE_NAME: ${{ github.event.inputs.attendee_name }}
+          IN_ATTENDEE_EMAIL: ${{ github.event.inputs.attendee_email }}
+          IN_SPEAKER_NAMES: ${{ github.event.inputs.speaker_names }}
+          IN_PRINT_STATUS: ${{ github.event.inputs.print_status }}
         run: |
-          validate_iso_date() {
-            echo "$1" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-          }
+          set -euo pipefail
 
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            EVENT_DATE=$(echo '${{ toJson(github.event.client_payload) }}' | jq -r '.event_date // empty')
-
-            if ! validate_iso_date "$EVENT_DATE"; then
-              echo "event_date must be in YYYY-MM-DD format"
-              exit 1
-            fi
-
-            {
-              echo 'json<<EOF'
-              echo '${{ toJson(github.event.client_payload) }}'
-              echo 'EOF'
-            } >> "$GITHUB_OUTPUT"
+          if [ "$TRIGGER" = "repository_dispatch" ]; then
+            # Solo i campi previsti; print_status forzato: chi invia non può segnare "printed".
+            PAYLOAD_JSON=$(printf '%s' "$CLIENT_PAYLOAD" | jq -c '{
+              event_slug, event_name, event_date, attendee_name, attendee_email, speaker_names,
+              print_status: "pending"
+            }')
           else
-            SPEAKER_NAMES='${{ github.event.inputs.speaker_names }}'
-            EVENT_DATE='${{ github.event.inputs.event_date }}'
-
-            if ! validate_iso_date "$EVENT_DATE"; then
-              echo "event_date must be in YYYY-MM-DD format"
-              exit 1
-            fi
-
-            if ! echo "$SPEAKER_NAMES" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            if ! printf '%s' "$IN_SPEAKER_NAMES" | jq -e 'type == "array"' >/dev/null 2>&1; then
               echo "speaker_names must be a JSON array string"
               exit 1
             fi
 
             PAYLOAD_JSON=$(jq -cn \
-              --arg event_slug '${{ github.event.inputs.event_slug }}' \
-              --arg event_name '${{ github.event.inputs.event_name }}' \
-              --arg event_date "$EVENT_DATE" \
-              --arg attendee_name '${{ github.event.inputs.attendee_name }}' \
-              --arg attendee_email '${{ github.event.inputs.attendee_email }}' \
-              --arg print_status '${{ github.event.inputs.print_status }}' \
-              --argjson speaker_names "$SPEAKER_NAMES" \
+              --arg event_slug "$IN_EVENT_SLUG" \
+              --arg event_name "$IN_EVENT_NAME" \
+              --arg event_date "$IN_EVENT_DATE" \
+              --arg attendee_name "$IN_ATTENDEE_NAME" \
+              --arg attendee_email "$IN_ATTENDEE_EMAIL" \
+              --arg print_status "$IN_PRINT_STATUS" \
+              --argjson speaker_names "$IN_SPEAKER_NAMES" \
               '{
                 event_slug: $event_slug,
                 event_name: $event_name,
@@ -90,16 +88,22 @@ jobs:
                 speaker_names: $speaker_names,
                 print_status: $print_status
               }')
-
-            echo "json=$PAYLOAD_JSON" >> "$GITHUB_OUTPUT"
           fi
+
+          if ! printf '%s' "$PAYLOAD_JSON" | jq -e '.event_date | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")' >/dev/null; then
+            echo "event_date must be in YYYY-MM-DD format"
+            exit 1
+          fi
+
+          # jq -c produce una sola riga (gli a capo nei valori sono escapati), quindi l'output non può essere spezzato.
+          echo "json=$PAYLOAD_JSON" >> "$GITHUB_OUTPUT"
 
       - name: Insert registration into Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          PAYLOAD: ${{ steps.payload.outputs.json }}
         run: |
-          PAYLOAD='${{ steps.payload.outputs.json }}'
           curl --fail -sS \
             -X POST \
             "${SUPABASE_URL}/rest/v1/registrations" \
