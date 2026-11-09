@@ -173,6 +173,20 @@ header img {
     display: none;
 }
 
+/* l'errore ha piu' testo: puo' crescere oltre l'altezza fissa delle altre fasi */
+#print-error {
+    height: auto;
+    min-height: 264px;
+}
+
+#print-error button {
+    margin-top: 8px;
+}
+
+.print-error-contacts {
+    font-size: 14px;
+}
+
 .print-error-title {
     font-family: PPMondwest;
     font-size: 48px;
