@@ -157,8 +157,8 @@ header img {
 }
 
 #print-dialog {
-    width: min(90vw, 560px);
-    padding: 20px;
+    width: min(90vw, 480px);
+    padding: 24px 20px;
     border: none;
     background: white;
     text-align: center;
@@ -168,22 +168,32 @@ header img {
     background: rgba(0, 0, 0, 0.85);
 }
 
+#print-dialog .decoration {
+    min-height: 0;
+}
+
 #print-dialog .decoration::before {
     content: "*********";
 }
 
+/* stessa altezza nelle due fasi, cosi' gli asterischi non saltano */
 #print-countdown,
 #print-tear {
     display: grid;
     place-items: center;
-    gap: 12px;
-    min-height: 320px;
     align-content: center;
+    gap: 8px;
+    height: 264px;
+    margin: 12px 0;
 }
 
 #print-countdown[hidden],
 #print-tear[hidden] {
     display: none;
+}
+
+#print-dialog p {
+    margin: 0;
 }
 
 .countdown-number {
@@ -193,7 +203,6 @@ header img {
 }
 
 #print-gif {
-    width: 100%;
-    max-width: 256px;
-    height: auto;
+    width: 220px;
+    height: 220px;
 }
