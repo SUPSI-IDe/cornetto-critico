@@ -116,16 +116,12 @@ header img {
     display: grid;
     place-items: center;
     width: 100%;
-    min-height: 64px;
+    min-height: 50px;
     margin: 0;
     padding: 0;
-    line-height: 0;
-    font-family: PPMondwest;
-    font-size: 64px;
-    text-align: center;
     background-image: url("../img/asterisk.svg");
     background-repeat: repeat-x;
-    background-size: 55px 50%;
+    background-size: 15px 20%;
     background-position: center;
 }
 
