@@ -17,7 +17,6 @@
 body {
     font-family: NeueMontreal;
     font-size: var(--fontSize);
-    margin: 40px auto;
     padding: 20px;
     line-height: 1.4;
 }
@@ -105,6 +104,10 @@ header img {
     font-size: 64px;
     text-align: center;
     overflow: hidden;
+    background-image: url("img/asterisk.svg");
+    background-repeat: repeat-x;
+    background-size: 15px 20%;
+    background-position: center;
 }
 
 .video-wrapper {
@@ -156,10 +159,6 @@ header img {
     text-align: justify;
 }
 
-.decoration::before {
-    content: "***********************************************";
-}
-
 @media (max-width: 768px) {
     header img {
         width: 80%;
@@ -167,10 +166,6 @@ header img {
     .info-wrapper{
         margin-left: 5px;
         margin-right: 5px;
-    }
-
-    .decoration::before {
-        content: "*************************";
     }
 
     .headline{
@@ -195,9 +190,5 @@ header img {
     h5,
     p {
         font-size: var(--fontSizeSmall);
-    }
-
-    .decoration::before {
-        content: "*****************";
     }
 }

@@ -15,7 +15,6 @@
 body {
     font-family: NeueMontreal;
     font-size: var(--fontSize);
-    margin: 40px auto;
     padding: 20px;
     line-height: 1.4;
 }
@@ -87,17 +86,17 @@ button:disabled {
 header {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
     align-items: center;
     justify-content: center;
-    padding-top: 0.5vh;
-    padding-bottom: 2vh;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 header img {
-    width: 100%;
+    width: 90%;
     max-width: 400px;
-    scale: 1.2;
+    scale: 1;
 }
 
 .event-meta {
@@ -117,29 +116,13 @@ header img {
     display: grid;
     place-items: center;
     width: 100%;
-    min-height: 64px;
+    height: fit-content;
     margin: 0;
     padding: 0;
-    line-height: 1;
-    font-family: PPMondwest;
-    font-size: 64px;
-    text-align: center;
-}
-
-.decoration::before {
-    content: "**********************************";
-}
-
-@media (max-width: 768px) {
-    .decoration::before {
-        content: "*************************";
-    }
-}
-
-@media (max-width: 430px) {
-    .decoration::before {
-        content: "*****************";
-    }
+    background-image: url("../img/asterisk.svg");
+    background-repeat: repeat-x;
+    background-size: 15px 20%;
+    background-position: center;
 }
 
 .video-wrapper {
@@ -149,9 +132,9 @@ header img {
     width: 100%;
     margin: 0;
     padding: 0;
-    padding-bottom:5vh;
+    padding-bottom:1.5vh;
 }
 .video-wrapper video {
-    width: 50%;
+    width: 30%;
     height: auto;
 }
