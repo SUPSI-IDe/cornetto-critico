@@ -155,17 +155,6 @@ header img {
     background: rgba(0, 0, 0, 0.85);
 }
 
-#print-dialog .decoration {
-    background-image: url("../img/asterisk.svg");
-    background-repeat: repeat-x;
-    background-size: 55px 30%;
-    background-position: center;
-}
-
-#print-dialog .decoration::before {
-    content: "";
-}
-
 /* stessa altezza nelle due fasi, cosi' gli asterischi non saltano */
 #print-countdown,
 #print-tear {
