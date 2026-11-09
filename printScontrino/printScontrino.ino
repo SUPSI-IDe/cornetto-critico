@@ -489,6 +489,18 @@ bool queryPrinterStatus(uint8_t &statusByte) {
 // isOnline and only block on paper-out and low-voltage, which are the two
 // conditions that genuinely prevent a successful print on this hardware.
 bool checkPrinterReady(bool &hasPaper, bool &voltageOk) {
+  // Stampante spenta: la linea TX della stampante resta bassa e la UART legge 0x00, cioè "tutto ok".
+  // Accesa, a riposo la linea è alta: se la leggiamo bassa la consideriamo spenta.
+  for (int i = 0; i < 20; ++i) {
+    if (digitalRead(PRINTER_RX_PIN) == LOW) {
+      logLine("Printer RX line low: printer off or disconnected.");
+      hasPaper = false;
+      voltageOk = false;
+      return false;
+    }
+    delay(1);
+  }
+
   uint8_t statusByte = 0;
   const bool gotResponse = queryPrinterStatus(statusByte);
 
