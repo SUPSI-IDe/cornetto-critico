@@ -43,6 +43,7 @@ struct Registration {
   int id = -1;
   String createdAt;
   String eventName;
+  String eventDate;
   String attendeeName;
   String attendeeEmail;
   String speakerNames[8];
@@ -50,6 +51,9 @@ struct Registration {
 };
 
 unsigned long lastPollAt = 0;
+
+// shortcut: tenuto solo in RAM, dopo un riavvio un job già stampato ma non aggiornato su Supabase si ristampa una volta.
+int lastPrintedId = -1;
 
 void logLine(const String &message) {
   Serial.println(message);
@@ -208,7 +212,7 @@ bool fetchNextPendingRegistration(Registration &registration) {
   const String url =
     String(SUPABASE_URL) +
     "/rest/v1/registrations"
-    "?select=id%2Ccreated_at%2Cevent_name%2Cattendee_name%2Cattendee_email%2Cspeaker_names"
+    "?select=id%2Ccreated_at%2Cevent_name%2Cevent_date%2Cattendee_name%2Cattendee_email%2Cspeaker_names"
     "&print_status=eq.pending"
     "&order=created_at.asc"
     "&limit=1";
@@ -243,6 +247,7 @@ bool fetchNextPendingRegistration(Registration &registration) {
   registration.id = row["id"] | -1;
   registration.createdAt = String((const char *)(row["created_at"] | ""));
   registration.eventName = String((const char *)(row["event_name"] | ""));
+  registration.eventDate = String((const char *)(row["event_date"] | ""));
   registration.attendeeName = String((const char *)(row["attendee_name"] | ""));
   registration.attendeeEmail = String((const char *)(row["attendee_email"] | ""));
   registration.speakerCount = 0;
@@ -512,6 +517,14 @@ bool checkPrinterReady(bool &hasPaper, bool &voltageOk) {
   return hasPaper && voltageOk;
 }
 
+// "2026-11-12" -> "12.11.2026"; altro formato: stampato com'è.
+String formatEventDate(const String &isoDate) {
+  if (isoDate.length() < 10 || isoDate[4] != '-' || isoDate[7] != '-') {
+    return isoDate;
+  }
+  return isoDate.substring(8, 10) + "." + isoDate.substring(5, 7) + "." + isoDate.substring(0, 4);
+}
+
 bool printReceipt(const Registration &registration) {
   printerReset();
   delay(100);
@@ -526,7 +539,7 @@ bool printReceipt(const Registration &registration) {
   printerFeed(1);
   printerSerial.println(registration.eventName);
   delay(100);
-  printerSerial.println("17.09.2026");
+  printerSerial.println(formatEventDate(registration.eventDate));
   delay(100);
   printerFeed(1);
 
@@ -614,9 +627,22 @@ void loopImpl() {
     return;
   }
 
-  logLine("Printing registration ID " + String(registration.id) + " for " + registration.attendeeName);
+  if (registration.id == lastPrintedId) {
+    // Già stampato al giro prima, ma Supabase non era stato aggiornato: riprova solo l'aggiornamento.
+    logLine("Registration ID " + String(registration.id) + " already printed; retrying Supabase update only.");
+  } else {
+    bool hasPaper = false;
+    bool voltageOk = false;
+    if (!checkPrinterReady(hasPaper, voltageOk)) {
+      // Resta pending: il monitor la segnala dopo STALE_MINUTES.
+      logLine("Printer not ready; registration ID " + String(registration.id) + " left pending.");
+      return;
+    }
 
-  printReceipt(registration);
+    logLine("Printing registration ID " + String(registration.id) + " for " + registration.attendeeName);
+    printReceipt(registration);
+    lastPrintedId = registration.id;
+  }
 
   if (!patchRegistrationPrinted(registration.id)) {
     logLine("Printed successfully, but Supabase update failed for registration ID " + String(registration.id));
