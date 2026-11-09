@@ -53,6 +53,12 @@
       <img id="print-gif" alt="Strappa lo scontrino verso l'alto" width="256" height="256" />
       <p><mark>STRAPPA VERSO L'ALTO</mark></p>
     </div>
+    <div id="print-error" role="alert" hidden>
+      <p>ISCRIZIONE EFFETTUATA</p>
+      <p class="print-error-title">ERRORE DI STAMPA</p>
+      <p><mark>CONTATTA LO STAFF PER RICEVERE IL TUO SCONTRINO</mark></p>
+      <button type="button" id="print-error-close">OK</button>
+    </div>
     <div class="decoration" aria-hidden="true"></div>
   </dialog>
 
@@ -72,34 +78,81 @@
     const printCountdownEl = document.getElementById('print-countdown');
     const printTearEl = document.getElementById('print-tear');
     const printGifEl = document.getElementById('print-gif');
+    const printErrorEl = document.getElementById('print-error');
     const countdownNumberEl = printDialogEl.querySelector('.countdown-number');
     let printTimers = [];
+    let printJob = 0; // cambia a ogni pop-up: i controlli di stampa di un pop-up vecchio si fermano
+
+    const PRINT_CHECK_EVERY_MS = 2000;
+    const PRINT_TIMEOUT_MS = 25000; // la scheda controlla la coda ogni 5s: una stampa riuscita è confermata in ~10-15s
+
+    const sleep = function(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); };
 
     function closePrintDialog() {
+      printJob++;
       printTimers.forEach(clearTimeout);
       printTimers = [];
       if (printDialogEl.open) printDialogEl.close();
     }
 
-    // 10s countdown "stampa in corso", poi 7s di gif "strappa verso l'alto"
+    function showPrintStep(stepEl) {
+      [printCountdownEl, printTearEl, printErrorEl].forEach(function(el) { el.hidden = el !== stepEl; });
+    }
+
+    // 10s di countdown "stampa in corso"; poi gif o errore lo decide followPrint
     function showPrintDialog() {
       closePrintDialog();
-      printCountdownEl.hidden = false;
-      printTearEl.hidden = true;
+      showPrintStep(printCountdownEl);
+      countdownNumberEl.textContent = '';
       printDialogEl.showModal();
 
       for (let s = 10; s >= 1; s--) {
         printTimers.push(setTimeout(function() { countdownNumberEl.textContent = s; }, (10 - s) * 1000));
       }
-      printTimers.push(setTimeout(function() {
-        printCountdownEl.hidden = true;
-        printTearEl.hidden = false;
-        printGifEl.src = '../img/strappa.gif?t=' + Date.now(); // riparte dal primo frame
-      }, 10000));
-      printTimers.push(setTimeout(closePrintDialog, 17000));
+      printTimers.push(setTimeout(function() { countdownNumberEl.textContent = ''; }, 10000));
+    }
+
+    function showTear() {
+      showPrintStep(printTearEl);
+      printGifEl.src = '../img/strappa.gif?t=' + Date.now(); // riparte dal primo frame
+      printTimers.push(setTimeout(closePrintDialog, 10000));
+    }
+
+    function showPrintError() {
+      showPrintStep(printErrorEl);
+      document.getElementById('print-error-close').focus();
+      printTimers.push(setTimeout(closePrintDialog, 60000)); // il tablet non resta bloccato se nessuno preme OK
+    }
+
+    async function isPrinted(id) {
+      try {
+        const res = await fetch(PUBLIC_ACTION_TRIGGER_URL + '?id=' + encodeURIComponent(id));
+        return res.ok && (await res.json()).status === 'printed';
+      } catch (err) {
+        return false; // rete o worker giù: riprova al giro dopo, a fine attesa vale come errore
+      }
+    }
+
+    // id = numero dell'iscrizione dato dal worker; senza id (worker vecchio) mostra la gif come prima
+    async function followPrint(id) {
+      const job = printJob;
+      const countdownDone = sleep(10000);
+      let printed = !id;
+      const deadline = Date.now() + PRINT_TIMEOUT_MS;
+
+      while (!printed && Date.now() < deadline) {
+        await sleep(PRINT_CHECK_EVERY_MS);
+        if (job !== printJob) return;
+        printed = await isPrinted(id);
+      }
+
+      await countdownDone;
+      if (job !== printJob) return;
+      if (printed) showTear(); else showPrintError();
     }
 
     printDialogEl.addEventListener('cancel', function(e) { e.preventDefault(); });
+    document.getElementById('print-error-close').addEventListener('click', closePrintDialog);
 
     async function loadEventInfo() {
       const urlCandidates = [
@@ -214,6 +267,9 @@
           const errorBody = await res.text();
           throw new Error(`HTTP ${res.status} ${errorBody}`);
         }
+
+        const data = await res.json().catch(function() { return {}; }); // il worker vecchio risponde "ok", non JSON
+        followPrint(data.id);
 
         formEl.reset();
         statusEl.textContent = 'Iscrizione confermata.';

@@ -157,7 +157,8 @@ header img {
 
 /* stessa altezza nelle due fasi, cosi' gli asterischi non saltano */
 #print-countdown,
-#print-tear {
+#print-tear,
+#print-error {
     display: grid;
     place-items: center;
     align-content: center;
@@ -167,8 +168,15 @@ header img {
 }
 
 #print-countdown[hidden],
-#print-tear[hidden] {
+#print-tear[hidden],
+#print-error[hidden] {
     display: none;
+}
+
+.print-error-title {
+    font-family: PPMondwest;
+    font-size: 48px;
+    line-height: 1;
 }
 
 #print-dialog p {
