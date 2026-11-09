@@ -155,3 +155,45 @@ header img {
     width: 50%;
     height: auto;
 }
+
+#print-dialog {
+    width: min(90vw, 560px);
+    padding: 20px;
+    border: none;
+    background: white;
+    text-align: center;
+}
+
+#print-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+#print-dialog .decoration::before {
+    content: "*********";
+}
+
+#print-countdown,
+#print-tear {
+    display: grid;
+    place-items: center;
+    gap: 12px;
+    min-height: 320px;
+    align-content: center;
+}
+
+#print-countdown[hidden],
+#print-tear[hidden] {
+    display: none;
+}
+
+.countdown-number {
+    font-family: PPMondwest;
+    font-size: 160px;
+    line-height: 1;
+}
+
+#print-gif {
+    width: 100%;
+    max-width: 256px;
+    height: auto;
+}

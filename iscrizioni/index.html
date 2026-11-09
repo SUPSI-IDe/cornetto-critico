@@ -44,6 +44,19 @@
 
   <div id="status"></div>
 
+  <dialog id="print-dialog">
+    <div class="decoration" aria-hidden="true"></div>
+    <div id="print-countdown">
+      <p>STAMPA SCONTRINO IN CORSO</p>
+      <p class="countdown-number" aria-live="polite"></p>
+    </div>
+    <div id="print-tear" hidden>
+      <img id="print-gif" alt="Strappa lo scontrino verso l'alto" width="256" height="256" />
+      <p><mark>STRAPPA VERSO L'ALTO</mark></p>
+    </div>
+    <div class="decoration" aria-hidden="true"></div>
+  </dialog>
+
   <script>
     const PUBLIC_ACTION_TRIGGER_URL = 'https://cornetto-critico.hi-bef.workers.dev/';
 
@@ -55,6 +68,39 @@
     const submitBtnEl  = document.getElementById('submit-btn');
     let EVENT = null;
     let successMessageTimeoutId = null;
+
+    const printDialogEl = document.getElementById('print-dialog');
+    const printCountdownEl = document.getElementById('print-countdown');
+    const printTearEl = document.getElementById('print-tear');
+    const printGifEl = document.getElementById('print-gif');
+    const countdownNumberEl = printDialogEl.querySelector('.countdown-number');
+    let printTimers = [];
+
+    function closePrintDialog() {
+      printTimers.forEach(clearTimeout);
+      printTimers = [];
+      if (printDialogEl.open) printDialogEl.close();
+    }
+
+    // 5s countdown "stampa in corso", poi 3s di gif "strappa verso l'alto"
+    function showPrintDialog() {
+      closePrintDialog();
+      printCountdownEl.hidden = false;
+      printTearEl.hidden = true;
+      printDialogEl.showModal();
+
+      for (let s = 5; s >= 1; s--) {
+        printTimers.push(setTimeout(function() { countdownNumberEl.textContent = s; }, (5 - s) * 1000));
+      }
+      printTimers.push(setTimeout(function() {
+        printCountdownEl.hidden = true;
+        printTearEl.hidden = false;
+        printGifEl.src = '../img/strappa.gif?t=' + Date.now(); // riparte dal primo frame
+      }, 5000));
+      printTimers.push(setTimeout(closePrintDialog, 8000));
+    }
+
+    printDialogEl.addEventListener('cancel', function(e) { e.preventDefault(); });
 
     async function loadEventInfo() {
       const urlCandidates = [
@@ -140,6 +186,8 @@
 
       submitBtnEl.disabled = true;
       statusEl.textContent = 'Invio in corso...';
+      document.activeElement.blur(); // chiude la tastiera su mobile
+      showPrintDialog();
 
       try {
         const registrationPayload = {
@@ -177,6 +225,7 @@
         }, 30000);
       } catch (err) {
         console.error(err);
+        closePrintDialog();
         statusEl.textContent = 'Errore durante la registrazione.';
       } finally {
         submitBtnEl.disabled = false;
