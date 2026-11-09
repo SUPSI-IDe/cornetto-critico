@@ -41,8 +41,6 @@
     <button type="submit" id="submit-btn">Conferma iscrizione</button>
   </form>
 
-  <div id="status"></div>
-
   <dialog id="print-dialog">
     <div class="decoration" aria-hidden="true"></div>
     <div id="print-countdown">
@@ -60,6 +58,13 @@
       <p class="print-error-contacts">matteo.subet@supsi.ch<br />alessandro.plantera@supsi.ch</p>
       <button type="button" id="print-error-close">OK</button>
     </div>
+    <div id="status-error" role="alert" hidden>
+      <p id="status-error-message"></p>
+      <button type="button" id="status-error-close">OK</button>
+    </div>
+    <div id="status-loading" hidden>
+      <p id="status-loading-message"></p>
+    </div>
     <div class="decoration" aria-hidden="true"></div>
   </dialog>
 
@@ -70,19 +75,22 @@
     const eventDateEl  = document.querySelector('.event-date');
     const speakerListEl = document.getElementById('speaker-list');
     const formEl       = document.getElementById('registration-form');
-    const statusEl     = document.getElementById('status');
     const submitBtnEl  = document.getElementById('submit-btn');
     let EVENT = null;
-    let successMessageTimeoutId = null;
 
     const printDialogEl = document.getElementById('print-dialog');
     const printCountdownEl = document.getElementById('print-countdown');
     const printTearEl = document.getElementById('print-tear');
     const printGifEl = document.getElementById('print-gif');
     const printErrorEl = document.getElementById('print-error');
+    const statusErrorEl = document.getElementById('status-error');
+    const statusErrorMessageEl = document.getElementById('status-error-message');
+    const statusLoadingEl = document.getElementById('status-loading');
+    const statusLoadingMessageEl = document.getElementById('status-loading-message');
     const countdownNumberEl = printDialogEl.querySelector('.countdown-number');
     let printTimers = [];
     let printJob = 0; // cambia a ogni pop-up: i controlli di stampa di un pop-up vecchio si fermano
+    let successMessageTimeoutId = null;
 
     const PRINT_CHECK_EVERY_MS = 2000;
     const PRINT_TIMEOUT_MS = 25000; // la scheda controlla la coda ogni 5s: una stampa riuscita è confermata in ~10-15s
@@ -97,7 +105,20 @@
     }
 
     function showPrintStep(stepEl) {
-      [printCountdownEl, printTearEl, printErrorEl].forEach(function(el) { el.hidden = el !== stepEl; });
+      [printCountdownEl, printTearEl, printErrorEl, statusErrorEl, statusLoadingEl].forEach(function(el) { el.hidden = el !== stepEl; });
+    }
+
+    function showStatusMessage(message) {
+      statusLoadingMessageEl.textContent = message;
+      statusLoadingEl.hidden = false;
+      if (!printDialogEl.open) printDialogEl.showModal();
+    }
+
+    function showStatusError(message) {
+      statusErrorMessageEl.textContent = message;
+      showPrintStep(statusErrorEl);
+      document.getElementById('status-error-close').focus();
+      if (!printDialogEl.open) printDialogEl.showModal();
     }
 
     // 10s di countdown "stampa in corso"; poi gif o errore lo decide followPrint
@@ -154,6 +175,7 @@
 
     printDialogEl.addEventListener('cancel', function(e) { e.preventDefault(); });
     document.getElementById('print-error-close').addEventListener('click', closePrintDialog);
+    document.getElementById('status-error-close').addEventListener('click', closePrintDialog);
 
     async function loadEventInfo() {
       const urlCandidates = [
@@ -200,16 +222,16 @@
 
     async function initializePage() {
       submitBtnEl.disabled = true;
-      statusEl.textContent = 'Caricamento evento...';
+      showStatusMessage('Caricamento evento...');
 
       try {
         EVENT = await loadEventInfo();
         renderEventInfo();
-        statusEl.textContent = '';
+        closePrintDialog();
         submitBtnEl.disabled = false;
       } catch (err) {
         console.error(err);
-        statusEl.textContent = 'Errore durante il caricamento evento.';
+        showStatusError('Errore durante il caricamento evento.');
       }
     }
 
@@ -228,18 +250,18 @@
       const selected_event_date = toIsoDateFromDisplay(eventDateEl.textContent || '');
 
       if (!EVENT || !selected_event_date || !attendee_name || !attendee_email) {
-        statusEl.textContent = 'Compila tutti i campi.';
+        showStatusError('Compila tutti i campi.');
         return;
       }
 
       if (!PUBLIC_ACTION_TRIGGER_URL || PUBLIC_ACTION_TRIGGER_URL === 'PASTE_PUBLIC_ACTION_TRIGGER_URL_HERE') {
-        statusEl.textContent = 'Configurazione mancante.';
+        showStatusError('Configurazione mancante.');
         return;
       }
 
       submitBtnEl.disabled = true;
-      statusEl.textContent = 'Invio in corso...';
       document.activeElement.blur(); // chiude la tastiera su mobile
+      showStatusMessage('Invio in corso...');
       showPrintDialog();
 
       try {
@@ -273,16 +295,15 @@
         followPrint(data.id);
 
         formEl.reset();
-        statusEl.textContent = 'Iscrizione confermata.';
+        showStatusMessage('Iscrizione confermata.');
 
         successMessageTimeoutId = setTimeout(function() {
-          statusEl.textContent = '';
+          closePrintDialog();
           successMessageTimeoutId = null;
         }, 30000);
       } catch (err) {
         console.error(err);
-        closePrintDialog();
-        statusEl.textContent = 'Errore durante la registrazione.';
+        showStatusError('Errore durante la registrazione.');
       } finally {
         submitBtnEl.disabled = false;
       }

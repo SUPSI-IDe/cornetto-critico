@@ -78,11 +78,6 @@ button:disabled {
     cursor: wait;
 }
 
-#status {
-    margin-top: 16px;
-    min-height: 24px;
-}
-
 header {
     display: flex;
     flex-direction: column;
@@ -158,7 +153,9 @@ header img {
 /* stessa altezza nelle due fasi, cosi' gli asterischi non saltano */
 #print-countdown,
 #print-tear,
-#print-error {
+#print-error,
+#status-error,
+#status-loading {
     display: grid;
     place-items: center;
     align-content: center;
@@ -169,17 +166,21 @@ header img {
 
 #print-countdown[hidden],
 #print-tear[hidden],
-#print-error[hidden] {
+#print-error[hidden],
+#status-error[hidden],
+#status-loading[hidden] {
     display: none;
 }
 
 /* l'errore ha piu' testo: puo' crescere oltre l'altezza fissa delle altre fasi */
-#print-error {
+#print-error,
+#status-error {
     height: auto;
     min-height: 264px;
 }
 
-#print-error button {
+#print-error button,
+#status-error button {
     margin-top: 8px;
 }
 
